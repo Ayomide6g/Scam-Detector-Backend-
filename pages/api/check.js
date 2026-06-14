@@ -1,90 +1,124 @@
-// pages/api/check.js
 export default async function handler(req, res) {
-  // 1. Only allow POST
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  // CORS for React Native
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method!== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const { text } = req.body;
+  if (!text) return res.status(400).json({ error: 'Text required' });
+
+  const result = analyzeMessage(text);
+  return res.status(200).json(result);
+}
+
+function analyzeMessage(text) {
+  const lowerText = text.toLowerCase();
+  
+  // 1. Extract URLs
+  const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-z0-9-]+\.[a-z]{2,})/gi;
+  const urls = text.match(urlRegex) || [];
+  
+  // 2. Define keyword lists
+  const highRiskKeywords = [
+    'otp', 'pin', 'password', 'cvv', 'bank account', 'verify now', 
+    'account suspended', 'claim prize', 'send money', 'free bitcoin',
+    'double your money', 'mining pool', 'investment opportunity'
+  ];
+  
+  const suspiciousKeywords = [
+    'urgent', 'act now', 'limited time', 'click here', 'download app',
+    'congratulations', 'you won', 'selected', 'bitcoin', 'crypto', 'forex'
+  ];
+
+  const shorteners = ['bit.ly', 'tinyurl', 't.co', 'goo.gl', 'ow.ly'];
+  const sketchyTlds = ['.tk', '.ml', '.ga', '.cf', '.gq', '.xyz'];
+  const whitelist = ['google.com', 'youtube.com', 'apple.com', 'paypal.com', 'binance.com', 'coinbase.com', 'instagram.com'];
+  
+  let score = 0;
+  let reasons = [];
+  let status = 'NO_CONTEXT';
+
+  // 3. Check for gibberish/no real words
+  const hasRealWords = /\b[a-z]{3,}\b/i.test(text) &&!/^[^a-zA-Z]*$/.test(text);
+  const hasKeywords = [...highRiskKeywords,...suspiciousKeywords].some(k => lowerText.includes(k));
+  
+  if (!hasRealWords && urls.length === 0) {
+    return {
+      status: 'NO_CONTEXT',
+      score: 0,
+      reasons: ['No scannable content detected', 'Message contains no links or recognizable words']
+    };
   }
 
-  try {
-    const { text } = req.body;
-
-    // 2. Validate input
-    if (!text || typeof text !== 'string') {
-      return res.status(400).json({ error: 'Text is required' });
-    }
-    if (text.length > 5000) {
-      return res.status(400).json({ error: 'Text too long. Max 5000 chars.' });
-    }
-    if (text.trim().length < 5) {
-      return res.status(200).json({ 
-        risk: 'NO_CONTENT', 
-        score: 0, 
-        reasons: ['Message too short to analyze'],
-        desc: 'Please paste a message, SMS, or link to check'
-      });
-    }
-
-    let score = 0;
-    let reasons = [];
-    const input = text.toLowerCase();
-
-    // 3. Better detection rules
-    // URL but not known safe domains
-    const urlRegex = /https?:\/\/[^\s]+/g;
-    const urls = input.match(urlRegex) || [];
-    const safeDomains = ['whatsapp.com', 'telegram.org', 'google.com'];
-    const hasUnsafeUrl = urls.some(url => !safeDomains.some(d => url.includes(d)));
-    if (hasUnsafeUrl) {
-      score += 30;
-      reasons.push('Contains an unknown or suspicious link');
-    }
-
-    // Keywords with word boundaries to avoid false positives
-    if (/\burgent\b|\bimmediately\b/.test(input)) {
-      score += 15;
-      reasons.push('Uses urgency to pressure you');
-    }
-    if (/\botp\b|\bone.?time.?password\b|\bverification code\b/.test(input)) {
-      score += 40;
-      reasons.push('Asks for OTP/verification code');
-    }
-    if (/\blog.?in\b|\bverify account\b|\bconfirm details\b/.test(input)) {
-      score += 25;
-      reasons.push('Asks you to log in or verify account');
-    }
-    if (/\bwon\b|\bprize\b|\blottery\b|\bcongratulations\b/.test(input)) {
-      score += 20;
-      reasons.push('Claims you won a prize');
-    }
-
-    // 4. Determine risk level + description
-    let risk, desc;
-    if (score >= 70) {
-      risk = 'HIGH_RISK';
-      desc = 'High risk of scam detected. Do not click links or share info.';
-    } else if (score >= 40) {
-      risk = 'SUSPICIOUS';
-      desc = 'This message shows suspicious patterns. Proceed with caution.';
-    } else {
-      risk = 'SAFE';
-      desc = 'No significant scam indicators were detected.';
-    }
-
-    if (reasons.length === 0) reasons.push('No scam indicators detected in this text');
-
-    // 5. TODO: Add rate limiting here. Use Redis, Upstash, or Vercel KV
-    // const checksLeft = await checkUserLimit(req); 
-
-    res.status(200).json({ 
-      risk, 
-      score, 
-      reasons,
-      desc,
-      checksLeft: 3 // Replace with real DB value
+  // 4. URL Analysis
+  if (urls.length > 0) {
+    urls.forEach(url => {
+      const cleanUrl = url.replace(/https?:\/\//, '').split('/')[0];
+      
+      // High risk URLs
+      if (sketchyTlds.some(tld => cleanUrl.endsWith(tld))) {
+        score += 40;
+        reasons.push(`Suspicious domain detected: ${cleanUrl}`);
+      }
+      if (shorteners.some(s => cleanUrl.includes(s))) {
+        score += 30;
+        reasons.push(`Shortened link found: ${cleanUrl}`);
+      }
+      if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(cleanUrl)) {
+        score += 50;
+        reasons.push(`IP address used instead of domain`);
+      }
+      
+      // Whitelist check
+      if (whitelist.some(safe => cleanUrl.includes(safe))) {
+        score -= 20;
+        reasons.push(`Link goes to trusted domain: ${cleanUrl}`);
+      }
     });
+  }
 
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Internal server error' });
+  // 5. Keyword Analysis
+  highRiskKeywords.forEach(keyword => {
+    if (lowerText.includes(keyword)) {
+      score += 35;
+      reasons.push(`High-risk phrase detected: "${keyword}"`);
+    }
+  });
+
+  suspiciousKeywords.forEach(keyword => {
+    if (lowerText.includes(keyword)) {
+      score += 15;
+      reasons.push(`Suspicious phrase detected: "${keyword}"`);
+    }
+  });
+
+  // 6. Final Classification
+  if (score === 0 && urls.length === 0 &&!hasKeywords) {
+    status = 'NO_CONTEXT';
+    reasons = ['No links or keywords detected', 'Message contains only casual text'];
+  } else if (score >= 70) {
+    status = 'HIGH_RISK';
+  } else if (score >= 30) {
+    status = 'SUSPICIOUS';
+  } else if (urls.length > 0 || hasKeywords) {
+    status = 'SAFE';
+    if (reasons.length === 0) reasons = ['No suspicious patterns detected', 'Links point to trusted domains'];
+  } else {
+    status = 'NO_CONTEXT';
+    reasons = ['No scannable content detected'];
   }
-  }
+
+  // Cap score at 100
+  score = Math.min(Math.max(score, 0), 100);
+  
+  if (status === 'NO_CONTEXT') score = 0;
+
+  return {
+    status,
+    score,
+    reasons: reasons.length? reasons : ['Analysis complete']
+  };
+      }
