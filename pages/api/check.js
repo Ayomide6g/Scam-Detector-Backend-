@@ -3,9 +3,9 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
+
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method!== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { text } = req.body;
   if (!text) return res.status(400).json({ error: 'Text required' });
@@ -16,39 +16,40 @@ export default async function handler(req, res) {
 
 function analyzeMessage(text) {
   const lowerText = text.toLowerCase();
-  
+
   // 1. Extract URLs
   const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-z0-9-]+\.[a-z]{2,})/gi;
   const urls = text.match(urlRegex) || [];
-  
+
   // 2. Define keyword lists
   const highRiskKeywords = [
     'otp', 'pin', 'password', 'cvv', 'bank account', 'verify now', 
-    'account suspended', 'claim prize', 'send money', 'free bitcoin',
+    'account suspended', 'claim prize', 'send money', 'free bitcoin', 
     'double your money', 'mining pool', 'investment opportunity'
   ];
-  
+
   const suspiciousKeywords = [
-    'urgent', 'act now', 'limited time', 'click here', 'download app',
+    'urgent', 'act now', 'limited time', 'click here', 'download app', 
     'congratulations', 'you won', 'selected', 'bitcoin', 'crypto', 'forex'
   ];
 
   const shorteners = ['bit.ly', 'tinyurl', 't.co', 'goo.gl', 'ow.ly'];
   const sketchyTlds = ['.tk', '.ml', '.ga', '.cf', '.gq', '.xyz'];
   const whitelist = ['google.com', 'youtube.com', 'apple.com', 'paypal.com', 'binance.com', 'coinbase.com', 'instagram.com'];
-  
+
   let score = 0;
   let reasons = [];
   let status = 'NO_CONTEXT';
 
   // 3. Check for gibberish/no real words
-  const hasRealWords = /\b[a-z]{3,}\b/i.test(text) &&!/^[^a-zA-Z]*$/.test(text);
-  const hasKeywords = [...highRiskKeywords,...suspiciousKeywords].some(k => lowerText.includes(k));
-  
+  const hasRealWords = /\b[a-z]{3,}\b/i.test(text) && !/^[^a-zA-Z]*$/.test(text);
+  const hasKeywords = [...highRiskKeywords, ...suspiciousKeywords].some(k => lowerText.includes(k));
+
   if (!hasRealWords && urls.length === 0) {
     return {
       status: 'NO_CONTEXT',
       score: 0,
+      message: 'We need more information to properly assess this message.',
       reasons: ['No scannable content detected', 'Message contains no links or recognizable words']
     };
   }
@@ -71,7 +72,6 @@ function analyzeMessage(text) {
         score += 50;
         reasons.push(`IP address used instead of domain`);
       }
-      
       // Whitelist check
       if (whitelist.some(safe => cleanUrl.includes(safe))) {
         score -= 20;
@@ -95,30 +95,39 @@ function analyzeMessage(text) {
     }
   });
 
-  // 6. Final Classification
-  if (score === 0 && urls.length === 0 &&!hasKeywords) {
+  // 6. Final Classification + add message field
+  let message = '';
+  
+  if (score === 0 && urls.length === 0 && !hasKeywords) {
     status = 'NO_CONTEXT';
-    reasons = ['No links or keywords detected', 'Message contains only casual text'];
+    message = 'We need more information to properly assess this message.';
+    reasons = ['No links or keywords detected', 'Message contains only casual text', 'Too short to analyze patterns'];
   } else if (score >= 70) {
     status = 'HIGH_RISK';
+    message = 'This message shows strong signs of fraud. Do not engage.';
   } else if (score >= 30) {
     status = 'SUSPICIOUS';
+    message = 'This message contains suspicious patterns. Be careful.';
   } else if (urls.length > 0 || hasKeywords) {
     status = 'SAFE';
-    if (reasons.length === 0) reasons = ['No suspicious patterns detected', 'Links point to trusted domains'];
+    message = 'This content appears to be safe. No significant scam indicators were detected.';
+    if (reasons.length === 0) {
+      reasons = ['No suspicious keywords detected', 'No malicious links or redirects found', 'Sender reputation looks good'];
+    }
   } else {
     status = 'NO_CONTEXT';
+    message = 'We need more information to properly assess this message.';
     reasons = ['No scannable content detected'];
   }
 
   // Cap score at 100
   score = Math.min(Math.max(score, 0), 100);
-  
-  if (status === 'NO_CONTEXT') score = 0;
+  if (status === 'NO_CONTEXT') score = Math.min(score, 30);
 
-  return {
-    status,
-    score,
-    reasons: reasons.length? reasons : ['Analysis complete']
+  return { 
+    status, 
+    score, 
+    message,
+    reasons: reasons.length ? reasons : ['Analysis complete'] 
   };
-      }
+}
