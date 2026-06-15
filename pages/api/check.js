@@ -236,6 +236,27 @@ function analyzeMessage(text) {
       }
     }
   }
+
+    // ===== Context check for all critical data requests =====
+  if (detectedCompany && score >= 40) {
+    const hasCriticalRequest = CRITICAL_KEYWORDS.some(k => hasWord(lowerText, k));
+    
+    if (hasCriticalRequest) {
+      const isNotification = ['linked', 'verified', 'updated', 'successful', 'confirmed', 'registered', 'changed', 'activated'].some(w => 
+        hasWord(lowerText, w)
+      );
+      const isAskingForData = ['send', 'provide', 'share', 'give', 'enter', 'submit', 'type', 'input', 'reply with'].some(w => 
+        hasWord(lowerText, w)
+      );
+      
+      // If it's a company notification and NOT asking you to send the data
+      if (isNotification && !isAskingForData) {
+        score -= 30;
+        reasons.push(`Likely legitimate ${detectedCompany.name} notification`);
+      }
+    }
+  }
+  // ===== END =====
   
   let message = '';
   if (score === 0 && urls.length === 0 &&!hasKeywords) {
