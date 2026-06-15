@@ -1,4 +1,3 @@
-import whois from 'whois-json';
 import { parse } from 'tldts';
 import leven from 'leven';
 
@@ -7,22 +6,21 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
+
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method!== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  
+
   const { text } = req.body;
   if (!text) return res.status(400).json({ error: 'Text required' });
 
   try {
-    const result = await analyzeMessage(text);
+    const result = analyzeMessage(text); // No await needed now
     return res.status(200).json(result);
   } catch (error) {
     console.error('Handler error:', error);
-    return res.status(500).json({ 
-      error: 'Analysis failed', 
-      message: 'Internal error occurred',
-      detail: error.message 
+    return res.status(500).json({
+      error: 'Analysis failed',
+      message: error.message
     });
   }
 }
@@ -43,36 +41,36 @@ const CRITICAL_KEYWORDS = ['bvn', 'nin', 'ssn', 'seed phrase', 'private key', 'r
 const HIGH_RISK_KEYWORDS = ['otp', 'pin', 'password', 'cvv', 'bank account', 'verify now', 'account suspended', 'claim prize', 'send money', 'free bitcoin', 'double my money', 'mining pool', 'investment opportunity', 'passport photo', 'utility bill', 'id card', 'selfie with id', 'account number', 'routing number', 'iban', '2fa code'];
 const SUSPICIOUS_KEYWORDS = ['urgent', 'act now', 'limited time', 'click here', 'download app', 'congratulations', 'you won', 'selected', 'bitcoin', 'crypto', 'forex', 'pay fee', 'processing fee', 'legal action', 'efcc'];
 
-async function analyzeMessage(text) {
+function analyzeMessage(text) {
   const lowerText = text.toLowerCase();
-  
+
   // 1. Extract URLs - KEEPING MY REGEX
   const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-z0-9-]+\.[a-z]{2,})/gi;
   const urls = text.match(urlRegex) || [];
-  
+
   // 2. Define keyword lists - MERGED MINE + NEW ONES
   const shorteners = ['bit.ly', 'tinyurl', 't.co', 'goo.gl', 'ow.ly', 'is.gd'];
   const sketchyTlds = ['.tk', '.ml', '.ga', '.cf', '.gq', '.xyz', '.top', '.work'];
   const whitelist = ['google.com', 'youtube.com', 'apple.com', 'paypal.com', 'binance.com', 'coinbase.com', 'instagram.com'];
-  
+
   let score = 0;
   let reasons = [];
   let status = 'NO_CONTEXT';
   let detectedCompany = null;
-  
+
   // 3. Check for gibberish/no real words - KEEPING MY LOGIC
   const hasRealWords = /\b[a-z]{3,}\b/i.test(text) &&!/^[^a-zA-Z]*$/.test(text);
   const hasKeywords = [...HIGH_RISK_KEYWORDS,...SUSPICIOUS_KEYWORDS,...CRITICAL_KEYWORDS].some(k => lowerText.includes(k));
-  
+
   if (!hasRealWords && urls.length === 0) {
-    return { 
-      status: 'NO_CONTEXT', 
-      score: 0, 
-      message: 'We need more information to properly assess this message.', 
-      reasons: ['No scannable content detected', 'Message contains no links or recognizable words'] 
+    return {
+      status: 'NO_CONTEXT',
+      score: 0,
+      message: 'We need more information to properly assess this message.',
+      reasons: ['No scannable content detected', 'Message contains no links or recognizable words']
     };
   }
-  
+
   // 3b. NEW: Detect company first
   for (const company of COMPANY_REGISTRY) {
     if (lowerText.includes(company.name.toLowerCase())) {
@@ -81,13 +79,13 @@ async function analyzeMessage(text) {
       break;
     }
   }
-  
-  // 4. URL Analysis - KEEPING MY LOGIC + ADDING DOMAIN AGE + TYPOSQUAT
+
+  // 4. URL Analysis - KEEPING MY LOGIC + TYPOSQUAT
   if (urls.length > 0) {
     for (const url of urls) {
       const parsed = parse(url);
       const cleanUrl = parsed.hostname || url.replace(/https?:\/\//, '').split('/')[0];
-      
+
       // My original checks - KEPT
       if (sketchyTlds.some(tld => cleanUrl.endsWith(tld))) {
         score += 40;
@@ -105,29 +103,8 @@ async function analyzeMessage(text) {
         score -= 20;
         reasons.push(`Link goes to trusted domain: ${cleanUrl}`);
       }
-      
-      // NEW: Domain age check with proper error handling
-      try {
-        const domainToCheck = parsed.domain || cleanUrl;
-        if (domainToCheck && domainToCheck.includes('.') &&!domainToCheck.match(/^\d/)) {
-          const whoisData = await whois(domainToCheck);
-          if (whoisData?.creationDate) {
-            const ageDays = (Date.now() - new Date(whoisData.creationDate).getTime()) / (1000 * 60 * 60 * 24);
-            if (ageDays < 30) {
-              score += 50;
-              reasons.push(`Domain ${cleanUrl} is only ${Math.floor(ageDays)} days old`);
-            } else if (ageDays < 180) {
-              score += 20;
-              reasons.push(`Domain ${cleanUrl} is ${Math.floor(ageDays)} days old`);
-            }
-          }
-        }
-      } catch (e) {
-        console.log('WHOIS failed for', cleanUrl, e.message);
-        // Don't crash, just skip
-      }
-      
-      // NEW: Typosquat check
+
+      // NEW: Typosquat check - KEPT
       if (detectedCompany) {
         for (const officialDomain of detectedCompany.domains) {
           const domainToCompare = parsed.domain || cleanUrl;
@@ -146,7 +123,7 @@ async function analyzeMessage(text) {
       }
     }
   }
-  
+
   // 5. Keyword Analysis - KEEPING MY STRUCTURE + EXPANDED LISTS
   CRITICAL_KEYWORDS.forEach(keyword => {
     if (lowerText.includes(keyword)) {
@@ -154,21 +131,21 @@ async function analyzeMessage(text) {
       reasons.push(`Critical data request: "${keyword}"`);
     }
   });
-  
+
   HIGH_RISK_KEYWORDS.forEach(keyword => {
     if (lowerText.includes(keyword)) {
       score += 35;
       reasons.push(`High-risk phrase detected: "${keyword}"`);
     }
   });
-  
+
   SUSPICIOUS_KEYWORDS.forEach(keyword => {
     if (lowerText.includes(keyword)) {
       score += 15;
       reasons.push(`Suspicious phrase detected: "${keyword}"`);
     }
   });
-  
+
   // 5b. NEW: Company-specific rules
   if (detectedCompany) {
     for (const rule of detectedCompany.never_asks_for) {
@@ -178,7 +155,7 @@ async function analyzeMessage(text) {
       }
     }
   }
-  
+
   // 6. Final Classification - KEEPING MY TIERS + ADDING CAUTION
   let message = '';
   if (score === 0 && urls.length === 0 &&!hasKeywords) {
@@ -192,7 +169,7 @@ async function analyzeMessage(text) {
     status = 'SUSPICIOUS';
     message = 'This message contains suspicious patterns. Be careful.';
   } else if (score >= 15) {
-    // NEW CAUTION TIER ASKED FOR
+    // NEW CAUTION TIER I ASKED FOR
     status = 'CAUTION';
     if (detectedCompany) {
       message = `This appears related to ${detectedCompany.name} but be careful. ${detectedCompany.name} only uses ${detectedCompany.official_channels} for sensitive requests.`;
@@ -210,16 +187,16 @@ async function analyzeMessage(text) {
     message = 'We need more information to properly assess this message.';
     reasons = ['No scannable content detected'];
   }
-  
+
   // Cap score at 100 - KEEPING MY LOGIC
   score = Math.min(Math.max(score, 0), 100);
   if (status === 'NO_CONTEXT') score = Math.min(score, 30);
-  
-  return { 
-    status, 
-    score, 
-    message, 
-    company_detected: detectedCompany?.name || null, 
-    reasons: reasons.length? [...new Set(reasons)] : ['Analysis complete'] 
+
+  return {
+    status,
+    score,
+    message,
+    company_detected: detectedCompany?.name || null,
+    reasons: reasons.length? [...new Set(reasons)] : ['Analysis complete']
   };
-        }
+    }
