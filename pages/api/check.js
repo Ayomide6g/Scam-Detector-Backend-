@@ -98,14 +98,18 @@ export default async function handler(req, res) {
   try {
     const result = analyzeMessage(text);
     if (supabase && result.score >= 40) {
-      await supabase.from('scam_logs').insert({
-        ip: ip,
-        text_preview: text.substring(0, 100),
-        score: result.score,
-        status: result.status,
-        company: result.company_detected,
-        created_at: new Date().toISOString()
-      }).catch(e => console.error('Supabase log error:', e));
+  try {
+    await supabase.from('scam_logs').insert({
+      ip: ip,
+      text_preview: text.substring(0, 100),
+      score: result.score,
+      status: result.status,
+      company: result.company_detected,
+      created_at: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error('Supabase log error:', e);
+  }
     }
     return res.status(200).json(result);
   } catch (error) {
