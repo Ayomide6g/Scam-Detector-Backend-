@@ -1,12 +1,27 @@
+import 'dotenv/config';
 import { parse } from 'tldts';
 import leven from 'leven';
+import { z } from 'zod'; // npm i zod
+import { createClient } from '@supabase/supabase-js'; // npm i @supabase/supabase-js
 
-// 2. Rate limiting - ADDED. In-memory. Use Redis in production
+// ===== ENV VARS - SET THESE =====
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://yourdomain.com';
+const API_KEY = process.env.API_KEY || 'your-secret-key';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const REDIS_URL = process.env.REDIS_URL; // For production rate limiting
+
+// ===== SUPABASE CLIENT FOR LOGGING =====
+const supabase = SUPABASE_URL && SUPABASE_KEY? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+// ===== REDIS RATE LIMITER - USE IN PRODUCTION =====
+// For now using in-memory fallback. Replace with Redis in prod
 const rateLimitStore = new Map();
-const RATE_LIMIT = 30; // 30 requests per minute
-const RATE_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT = 30;
+const RATE_WINDOW = 60 * 1000;
 
-function checkRateLimit(ip) {
+async function checkRateLimit(ip) {
+  // TODO: Replace with Redis: await redis.incr(`ratelimit:${ip}`) + expire
   const now = Date.now();
   const userRequests = rateLimitStore.get(ip) || [];
   const recentRequests = userRequests.filter(time => now - time < RATE_WINDOW);
@@ -20,52 +35,98 @@ function checkRateLimit(ip) {
   return { allowed: true };
 }
 
-// 1. Input sanitation - ADDED. Cleans text before analysis
+// CLEANUP: Prevent memory leak - runs every 5 mins
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, times] of rateLimitStore.entries()) {
+    const recent = times.filter(t => now - t < RATE_WINDOW);
+    if (recent.length === 0) rateLimitStore.delete(ip);
+    else rateLimitStore.set(ip, recent);
+  }
+}, 5 * 60 * 1000);
+
+// ===== BODY VALIDATION SCHEMA - ZOD =====
+const RequestSchema = z.object({
+  text: z.string().min(1).max(5000)
+});
+
+// ===== INPUT SANITATION - YOURS + WORD BOUNDARY FIX =====
 function sanitizeInput(text) {
   if (!text || typeof text!== 'string') return '';
-
-  // Limit length - prevent spam/DoS
   if (text.length > 5000) text = text.substring(0, 5000);
-
-  // Lowercase + trim
   let clean = text.toLowerCase().trim();
-
-  // Normalize unicode - catches Cyrillic 'оtp'
   clean = clean.normalize('NFKD');
-
-  // Remove zero-width/hidden chars scammers use
   clean = clean.replace(/[\u200B-\u200D\uFEFF\u00AD]/g, '');
-
-  // Collapse spaces/dashes/dots/stars between letters: 'o t p' → 'otp'
   clean = clean.replace(/([a-z])[\s\-\.\*\_]+([a-z0-9])/g, '$1$2');
-
-  // Replace leetspeak: 0→o, 1→i, 3→e, 4→a, 5→s, 7→t
   clean = clean.replace(/0/g, 'o').replace(/1/g, 'i').replace(/3/g, 'e');
   clean = clean.replace(/4/g, 'a').replace(/5/g, 's').replace(/7/g, 't');
-
   return clean;
 }
 
+// ===== WORD BOUNDARY MATCHER - PREVENTS "password" IN "passwordreset" =====
+function hasWord(text, word) {
+  const regex = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+  return regex.test(text);
+}
+
 export default async function handler(req, res) {
-  // CORS for React Native - keeping yours
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // HELMET / SECURITY HEADERS - ADDED
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+
+  // STRICT CORS - ADDED. No more *
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
+
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method!== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // 2. Rate limiting check - ADDED
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
-  const rateCheck = checkRateLimit(ip);
+  // API AUTHENTICATION - ADDED
+  const apiKey = req.headers['x-api-key'];
+  if (apiKey!== API_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  // BODY SIZE LIMIT - 10kb
+  const contentLength = parseInt(req.headers['content-length'] || '0');
+  if (contentLength > 10240) {
+    return res.status(413).json({ error: 'Payload too large' });
+  }
+
+  // IP SPOOFING FIX - Use only first IP
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip = forwarded? forwarded.split(',')[0].trim() : req.socket.remoteAddress || 'unknown';
+
+  const rateCheck = await checkRateLimit(ip);
   if (!rateCheck.allowed) {
     return res.status(429).json({ error: 'Too many requests', retryAfter: rateCheck.retryAfter });
   }
 
-  const { text } = req.body;
-  if (!text) return res.status(400).json({ error: 'Text required' });
+  // BODY VALIDATION - ZOD
+  const parseResult = RequestSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: 'Invalid request', details: parseResult.error.issues });
+  }
+  const { text } = parseResult.data;
 
   try {
-    const result = analyzeMessage(text); // No await needed now
+    const result = analyzeMessage(text);
+
+    // REQUEST LOGGING - SUPABASE
+    if (supabase && result.score >= 40) {
+      await supabase.from('scam_logs').insert({
+        ip: ip,
+        text_preview: text.substring(0, 100),
+        score: result.score,
+        status: result.status,
+        company: result.company_detected,
+        created_at: new Date().toISOString()
+      }).catch(e => console.error('Supabase log error:', e));
+    }
+
     return res.status(200).json(result);
   } catch (error) {
     console.error('Handler error:', error);
@@ -84,21 +145,18 @@ const COMPANY_REGISTRY = [
   // ===== NIGERIA BANKS =====
 ];
 
-// ===== WORLDWIDE DANGER KEYWORDS - expanded from yours =====
+// ===== WORLDWIDE DANGER KEYWORDS =====
 const CRITICAL_KEYWORDS = ['bvn', 'nin', 'ssn', 'seed phrase', 'private key', 'recovery phrase', '12 words', '24 words', 'mnemonic', 'card pin', 'atm pin', 'transaction pin'];
 const HIGH_RISK_KEYWORDS = ['otp', 'pin', 'password', 'cvv', 'bank account', 'verify now', 'account suspended', 'claim prize', 'send money', 'free bitcoin', 'double my money', 'mining pool', 'investment opportunity', 'passport photo', 'utility bill', 'id card', 'selfie with id', 'account number', 'routing number', 'iban', '2fa code'];
 const SUSPICIOUS_KEYWORDS = ['urgent', 'act now', 'limited time', 'click here', 'download app', 'congratulations', 'you won', 'selected', 'bitcoin', 'crypto', 'forex', 'pay fee', 'processing fee', 'legal action', 'efcc'];
 
 function analyzeMessage(text) {
-  // 1. Input sanitation - ADDED. Keep rawText for URL extraction
   const rawText = text;
-  const lowerText = sanitizeInput(text); // Sanitized version for matching
+  const lowerText = sanitizeInput(text);
 
-  // 1. Extract URLs - KEEPING YOUR REGEX
   const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-z0-9-]+\.[a-z]{2,})/gi;
-  const urls = rawText.match(urlRegex) || []; // Use rawText so we get real URLs
+  const urls = rawText.match(urlRegex) || [];
 
-  // 2. Define keyword lists - MERGED YOURS + NEW ONES
   const shorteners = ['bit.ly', 'tinyurl', 't.co', 'goo.gl', 'ow.ly', 'is.gd'];
   const sketchyTlds = ['.tk', '.ml', '.ga', '.cf', '.gq', '.xyz', '.top', '.work'];
   const whitelist = ['google.com', 'youtube.com', 'apple.com', 'paypal.com', 'binance.com', 'coinbase.com', 'instagram.com'];
@@ -107,22 +165,19 @@ function analyzeMessage(text) {
   let status = 'NO_CONTEXT';
   let detectedCompany = null;
 
-  // 3. Check for gibberish/no real words - KEEPING YOUR LOGIC
   const hasRealWords = /\b[a-z]{3,}\b/i.test(rawText) &&!/^[^a-zA-Z]*$/.test(rawText);
-  const hasKeywords = [...HIGH_RISK_KEYWORDS,...SUSPICIOUS_KEYWORDS,...CRITICAL_KEYWORDS].some(k => lowerText.includes(k));
+  const hasKeywords = [...HIGH_RISK_KEYWORDS,...SUSPICIOUS_KEYWORDS,...CRITICAL_KEYWORDS].some(k => hasWord(lowerText, k));
   if (!hasRealWords && urls.length === 0) {
     return { status: 'NO_CONTEXT', score: 0, message: 'We need more information to properly assess this message.', reasons: ['No scannable content detected', 'Message contains no links or recognizable words'] };
   }
 
-  // 3b. NEW: Detect company first
   for (const company of COMPANY_REGISTRY) {
-    if (lowerText.includes(company.name.toLowerCase())) {
+    if (hasWord(lowerText, company.name.toLowerCase())) {
       detectedCompany = company;
       break;
     }
   }
 
-  // 4. URL Analysis - KEEPING YOUR LOGIC + TYPOSQUAT
   if (urls.length > 0) {
     for (const url of urls) {
       let parsed, cleanUrl;
@@ -134,7 +189,6 @@ function analyzeMessage(text) {
         parsed = { domain: cleanUrl };
       }
 
-      // Your original checks - KEPT
       if (sketchyTlds.some(tld => cleanUrl.endsWith(tld))) {
         score += 40;
         reasons.push(`Suspicious domain detected: ${cleanUrl}`);
@@ -152,7 +206,8 @@ function analyzeMessage(text) {
         reasons.push(`Link goes to trusted domain: ${cleanUrl}`);
       }
 
-      // NEW: Typosquat check - KEPT
+      score = Math.max(score, 0); // Score floor
+
       if (detectedCompany) {
         for (const officialDomain of detectedCompany.domains) {
           const domainToCompare = parsed.domain || cleanUrl;
@@ -172,37 +227,35 @@ function analyzeMessage(text) {
     }
   }
 
-  // 5. Keyword Analysis - KEEPING YOUR STRUCTURE + EXPANDED LISTS
+  // BETTER KEYWORD MATCHING - WORD BOUNDARIES
   CRITICAL_KEYWORDS.forEach(keyword => {
-    if (lowerText.includes(keyword)) {
+    if (hasWord(lowerText, keyword)) {
       score += 40;
       reasons.push(`Critical data request: "${keyword}"`);
     }
   });
   HIGH_RISK_KEYWORDS.forEach(keyword => {
-    if (lowerText.includes(keyword)) {
+    if (hasWord(lowerText, keyword)) {
       score += 35;
       reasons.push(`High-risk phrase detected: "${keyword}"`);
     }
   });
   SUSPICIOUS_KEYWORDS.forEach(keyword => {
-    if (lowerText.includes(keyword)) {
+    if (hasWord(lowerText, keyword)) {
       score += 15;
       reasons.push(`Suspicious phrase detected: "${keyword}"`);
     }
   });
 
-  // 5b. NEW: Company-specific rules
   if (detectedCompany) {
     for (const rule of detectedCompany.never_asks_for) {
-      if (lowerText.includes(rule.split(' ')[0])) {
+      if (hasWord(lowerText, rule.split(' ')[0])) {
         score += 35;
         reasons.push(`${detectedCompany.name} never asks for "${rule}" via messages`);
       }
     }
   }
 
-  // 6. Final Classification - KEEPING YOUR TIERS + ADDING CAUTION
   let message = '';
   if (score === 0 && urls.length === 0 &&!hasKeywords) {
     status = 'NO_CONTEXT';
@@ -214,7 +267,7 @@ function analyzeMessage(text) {
   } else if (score >= 30) {
     status = 'SUSPICIOUS';
     message = 'This message contains suspicious patterns. Be careful.';
-  } else if (score >= 15) { // NEW CAUTION TIER YOU ASKED FOR
+  } else if (score >= 15) {
     status = 'CAUTION';
     if (detectedCompany) {
       message = `This appears related to ${detectedCompany.name} but be careful. ${detectedCompany.name} only uses ${detectedCompany.official_channels} for sensitive requests.`;
@@ -233,7 +286,6 @@ function analyzeMessage(text) {
     reasons = ['No scannable content detected'];
   }
 
-  // Cap score at 100 - KEEPING YOUR LOGIC
   score = Math.min(Math.max(score, 0), 100);
   if (status === 'NO_CONTEXT') score = Math.min(score, 30);
 
@@ -244,4 +296,4 @@ function analyzeMessage(text) {
     company_detected: detectedCompany?.name || null,
     reasons: reasons.length? [...new Set(reasons)] : ['Analysis complete']
   };
-  }
+                           }
