@@ -2,13 +2,13 @@
   "name": "scam-detector-backend",
   "version": "1.0.0",
   "type": "module",
+  "engines": {
+    "node": "20.x"
+  },
   "dependencies": {
     "next": "14.2.3",
     "whois-json": "^2.0.3",
     "tldts": "^6.1.0",
     "leven": "^4.0.0"
-  },
-  "engines": {
-    "node": "20.x"
   }
 }
