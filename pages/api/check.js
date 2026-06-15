@@ -43,14 +43,15 @@ setInterval(() => {
 const RequestSchema = z.object({ text: z.string().min(1).max(5000) });
 
 function sanitizeInput(text) {
-  if (!text || typeof text!== 'string') return '';
+  if (!text || typeof text !== 'string') return '';
   if (text.length > 5000) text = text.substring(0, 5000);
+  
+  // Only lowercase + trim. Keep spaces and numbers.
   let clean = text.toLowerCase().trim();
-  clean = clean.normalize('NFKD');
+  
+  // Remove zero-width chars only
   clean = clean.replace(/[\u200B-\u200D\uFEFF\u00AD]/g, '');
-  clean = clean.replace(/([a-z])[\s\-\.\*\_]+([a-z0-9])/g, '$1$2');
-  clean = clean.replace(/0/g, 'o').replace(/1/g, 'i').replace(/3/g, 'e');
-  clean = clean.replace(/4/g, 'a').replace(/5/g, 's').replace(/7/g, 't');
+  
   return clean;
 }
 
