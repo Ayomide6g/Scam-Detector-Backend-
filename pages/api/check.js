@@ -33,6 +33,79 @@ const COMPANY_REGISTRY = [
   { name: 'PayPal', industry: 'Fintech', domains: ['paypal.com'], ussd: [], never_asks_for: ['password via email'], official_channels: 'PayPal app' },
   { name: 'Apple', industry: 'Tech', domains: ['apple.com', 'icloud.com'], ussd: [], never_asks_for: ['apple id via link'], official_channels: 'Settings on my device' },
   { name: 'Binance', industry: 'Crypto', domains: ['binance.com'], ussd: [], never_asks_for: ['seed phrase', '12 words'], official_channels: 'Binance app' },
+  // ===== NIGERIA BANKS =====
+  { name: 'Access Bank', industry: 'Bank', domains: ['accessbankplc.com'], ussd: ['*901#'], never_asks_for: ['bvn via link', 'card details'], official_channels: 'AccessMore app or *901#' },
+  { name: 'Zenith Bank', industry: 'Bank', domains: ['zenithbank.com'], ussd: ['*966#'], never_asks_for: ['token via sms', 'password'], official_channels: 'Zenith Bank app or *966#' },
+  { name: 'First Bank', industry: 'Bank', domains: ['firstbanknigeria.com'], ussd: ['*894#'], never_asks_for: ['bvn via call'], official_channels: 'FirstMobile app or *894#' },
+  { name: 'UBA', industry: 'Bank', domains: ['ubagroup.com'], ussd: ['*919#'], never_asks_for: ['account number via link'], official_channels: 'UBA Mobile app or *919#' },
+  { name: 'Fidelity Bank', industry: 'Bank', domains: ['fidelitybank.ng'], ussd: ['*770#'], never_asks_for: ['pin via whatsapp'], official_channels: 'Fidelity Bank app' },
+  { name: 'Ecobank', industry: 'Bank', domains: ['ecobank.com'], ussd: ['*326#'], never_asks_for: ['bvn via email'], official_channels: 'Ecobank Mobile app' },
+  { name: 'Stanbic IBTC', industry: 'Bank', domains: ['stanbicibtcbank.com'], ussd: ['*909#'], never_asks_for: ['token via call'], official_channels: 'Stanbic IBTC app' },
+  { name: 'Union Bank', industry: 'Bank', domains: ['unionbankng.com'], ussd: ['*826#'], never_asks_for: ['password via link'], official_channels: 'UnionMobile app' },
+  { name: 'Sterling Bank', industry: 'Bank', domains: ['sterling.ng'], ussd: ['*822#'], never_asks_for: ['otp via sms'], official_channels: 'Sterling OnePay app' },
+  { name: 'Wema Bank', industry: 'Bank', domains: ['wemabank.com'], ussd: ['*945#'], never_asks_for: ['bvn via whatsapp'], official_channels: 'ALAT by Wema app' },
+  { name: 'Polaris Bank', industry: 'Bank', domains: ['polarisbanklimited.com'], ussd: ['*833#'], never_asks_for: ['card cvv'], official_channels: 'Polaris Mobile app' },
+  { name: 'Keystone Bank', industry: 'Bank', domains: ['keystonebankng.com'], ussd: ['*7111#'], never_asks_for: ['account details'], official_channels: 'Keystone Mobile app' },
+  { name: 'Heritage Bank', industry: 'Bank', domains: ['hbng.com'], ussd: ['*745#'], never_asks_for: ['pin via email'], official_channels: 'Heritage Bank app' },
+  
+  // ===== NIGERIA FINTECH =====
+  { name: 'Opay', industry: 'Fintech', domains: ['opayweb.com', 'opay.com'], ussd: ['*955#'], never_asks_for: ['pin via whatsapp', 'password'], official_channels: 'Opay app or *955#' },
+  { name: 'Palmpay', industry: 'Fintech', domains: ['palmpay.com'], ussd: ['*652#'], never_asks_for: ['bvn via call', 'otp'], official_channels: 'Palmpay app or *652#' },
+  { name: 'Kuda', industry: 'Fintech', domains: ['kuda.com'], ussd: [], never_asks_for: ['password via link', 'pin'], official_channels: 'Kuda app' },
+  { name: 'Moniepoint', industry: 'Fintech', domains: ['moniepoint.com'], ussd: ['*5573#'], never_asks_for: ['agent pin', 'bvn'], official_channels: 'Moniepoint app' },
+  { name: 'Paga', industry: 'Fintech', domains: ['mypaga.com'], ussd: ['*242#'], never_asks_for: ['password via sms'], official_channels: 'Paga app or *242#' },
+  { name: 'Flutterwave', industry: 'Fintech', domains: ['flutterwave.com'], ussd: [], never_asks_for: ['merchant key', 'api key'], official_channels: 'Flutterwave Dashboard' },
+  { name: 'Paystack', industry: 'Fintech', domains: ['paystack.com'], ussd: [], never_asks_for: ['secret key', 'password'], official_channels: 'Paystack Dashboard' },
+  { name: 'Carbon', industry: 'Fintech', domains: ['getcarbon.co'], ussd: ['*1303#'], never_asks_for: ['bvn via whatsapp'], official_channels: 'Carbon app' },
+  { name: 'FairMoney', industry: 'Fintech', domains: ['fairmoney.ng'], ussd: ['*566*55#'], never_asks_for: ['loan pin'], official_channels: 'FairMoney app' },
+  { name: 'Branch', industry: 'Fintech', domains: ['branch.co'], ussd: [], never_asks_for: ['account password'], official_channels: 'Branch app' },
+  { name: 'VBank', industry: 'Fintech', domains: ['vbank.ng'], ussd: ['*5037#'], never_asks_for: ['pin via call'], official_channels: 'VBank app' },
+  { name: 'Sparkle', industry: 'Fintech', domains: ['sparkle.ng'], ussd: [], never_asks_for: ['password'], official_channels: 'Sparkle app' },
+  
+  // ===== NIGERIA TELCOS =====
+  { name: 'Airtel', industry: 'Telco', domains: ['airtel.com.ng', 'airtel.africa'], ussd: ['*121#', '*312#'], never_asks_for: ['nin via whatsapp', 'sim swap pin'], official_channels: 'MyAirtel app or *121#' },
+  { name: 'Glo', industry: 'Telco', domains: ['gloworld.com'], ussd: ['*777#'], never_asks_for: ['nin via sms'], official_channels: 'Glo Café app or *777#' },
+  { name: '9mobile', industry: 'Telco', domains: ['9mobile.com.ng'], ussd: ['*200#'], never_asks_for: ['puk via link'], official_channels: '9mobile app or *200#' },
+  
+  // ===== NIGERIA GOVT/SCHOLARSHIP =====
+  { name: 'NIN', industry: 'Government', domains: ['nimc.gov.ng'], ussd: ['*346#'], never_asks_for: ['nin via whatsapp', 'payment'], official_channels: 'NIMC office or *346#' },
+  { name: 'BVN', industry: 'Government', domains: ['nibss-plc.com.ng'], ussd: ['*565*0#'], never_asks_for: ['bvn via link'], official_channels: 'Bank branch only' },
+  { name: 'JAMB', industry: 'Government', domains: ['jamb.gov.ng'], ussd: [], never_asks_for: ['payment via whatsapp'], official_channels: 'JAMB portal only' },
+  { name: 'NYSC', industry: 'Government', domains: ['nysc.gov.ng'], ussd: [], never_asks_for: ['call-up number via email'], official_channels: 'NYSC portal' },
+  { name: 'EFCC', industry: 'Government', domains: ['efcc.gov.ng'], ussd: [], never_asks_for: ['payment to clear name'], official_channels: 'EFCC office only' },
+  { name: 'NNPC', industry: 'Government', domains: ['nnpcgroup.com'], ussd: [], never_asks_for: ['job payment'], official_channels: 'NNPC official website' },
+  
+  // ===== GLOBAL CRYPTO =====
+  { name: 'Coinbase', industry: 'Crypto', domains: ['coinbase.com'], ussd: [], never_asks_for: ['seed phrase', 'private key'], official_channels: 'Coinbase app' },
+  { name: 'MetaMask', industry: 'Crypto', domains: ['metamask.io'], ussd: [], never_asks_for: ['seed phrase', '12 words', 'private key'], official_channels: 'MetaMask extension or app' },
+  { name: 'Trust Wallet', industry: 'Crypto', domains: ['trustwallet.com'], ussd: [], never_asks_for: ['recovery phrase', '12 words'], official_channels: 'Trust Wallet app' },
+  { name: 'Kraken', industry: 'Crypto', domains: ['kraken.com'], ussd: [], never_asks_for: ['password via email'], official_channels: 'Kraken app' },
+  { name: 'KuCoin', industry: 'Crypto', domains: ['kucoin.com'], ussd: [], never_asks_for: ['seed phrase'], official_channels: 'KuCoin app' },
+  { name: 'Bybit', industry: 'Crypto', domains: ['bybit.com'], ussd: [], never_asks_for: ['api key via chat'], official_channels: 'Bybit app' },
+  { name: 'OKX', industry: 'Crypto', domains: ['okx.com'], ussd: [], never_asks_for: ['private key'], official_channels: 'OKX app' },
+  { name: 'Phantom', industry: 'Crypto', domains: ['phantom.app'], ussd: [], never_asks_for: ['seed phrase'], official_channels: 'Phantom wallet' },
+  
+  // ===== GLOBAL TECH =====
+  { name: 'Google', industry: 'Tech', domains: ['google.com', 'gmail.com'], ussd: [], never_asks_for: ['password via email', 'verification code'], official_channels: 'Google Account settings' },
+  { name: 'Facebook', industry: 'Social', domains: ['facebook.com', 'fb.com'], ussd: [], never_asks_for: ['password via chat'], official_channels: 'Facebook app' },
+  { name: 'Instagram', industry: 'Social', domains: ['instagram.com'], ussd: [], never_asks_for: ['password reset via dm'], official_channels: 'Instagram app' },
+  { name: 'WhatsApp', industry: 'Social', domains: ['whatsapp.com'], ussd: [], never_asks_for: ['6-digit code', 'verification'], official_channels: 'WhatsApp app only' },
+  { name: 'Telegram', industry: 'Social', domains: ['telegram.org'], ussd: [], never_asks_for: ['login code via chat'], official_channels: 'Telegram app' },
+  { name: 'TikTok', industry: 'Social', domains: ['tiktok.com'], ussd: [], never_asks_for: ['password via message'], official_channels: 'TikTok app' },
+  { name: 'X', industry: 'Social', domains: ['x.com', 'twitter.com'], ussd: [], never_asks_for: ['password via dm'], official_channels: 'X app' },
+  { name: 'Microsoft', industry: 'Tech', domains: ['microsoft.com', 'outlook.com'], ussd: [], never_asks_for: ['password via email'], official_channels: 'Microsoft Account' },
+  { name: 'Netflix', industry: 'Entertainment', domains: ['netflix.com'], ussd: [], never_asks_for: ['password via sms', 'payment via whatsapp'], official_channels: 'Netflix app' },
+  { name: 'Amazon', industry: 'E-commerce', domains: ['amazon.com'], ussd: [], never_asks_for: ['password via email'], official_channels: 'Amazon app' },
+  { name: 'LinkedIn', industry: 'Social', domains: ['linkedin.com'], ussd: [], never_asks_for: ['password via message'], official_channels: 'LinkedIn app' },
+  
+  // ===== GLOBAL FINTECH/PAYMENT =====
+  { name: 'Cash App', industry: 'Fintech', domains: ['cash.app'], ussd: [], never_asks_for: ['pin via dm', 'ssn'], official_channels: 'Cash App' },
+  { name: 'Venmo', industry: 'Fintech', domains: ['venmo.com'], ussd: [], never_asks_for: ['password via email'], official_channels: 'Venmo app' },
+  { name: 'Wise', industry: 'Fintech', domains: ['wise.com'], ussd: [], never_asks_for: ['password via chat'], official_channels: 'Wise app' },
+  { name: 'Revolut', industry: 'Fintech', domains: ['revolut.com'], ussd: [], never_asks_for: ['card details via email'], official_channels: 'Revolut app' },
+  { name: 'Stripe', industry: 'Fintech', domains: ['stripe.com'], ussd: [], never_asks_for: ['api key via email'], official_channels: 'Stripe Dashboard' },
+  { name: 'Skrill', industry: 'Fintech', domains: ['skrill.com'], ussd: [], never_asks_for: ['password via link'], official_channels: 'Skrill app' },
+  { name: 'Payoneer', industry: 'Fintech', domains: ['payoneer.com'], ussd: [], never_asks_for: ['account details via chat'], official_channels: 'Payoneer app' },
   // Add 494 more companies here
 ];
 
