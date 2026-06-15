@@ -83,9 +83,14 @@ function analyzeMessage(text) {
   // 4. URL Analysis - KEEPING MY LOGIC + TYPOSQUAT
   if (urls.length > 0) {
     for (const url of urls) {
-      const parsed = parse(url);
-      const cleanUrl = parsed.hostname || url.replace(/https?:\/\//, '').split('/')[0];
-
+      let parsed, cleanUrl;
+try {
+  parsed = parse(url);
+  cleanUrl = parsed?.hostname || url.replace(/https?:\/\//, '').split('/')[0];
+} catch (e) {
+  cleanUrl = url.replace(/https?:\/\//, '').split('/')[0];
+  parsed = { domain: cleanUrl };
+}
       // My original checks - KEPT
       if (sketchyTlds.some(tld => cleanUrl.endsWith(tld))) {
         score += 40;
