@@ -75,7 +75,6 @@ function analyzeMessage(text) {
   for (const company of COMPANY_REGISTRY) {
     if (lowerText.includes(company.name.toLowerCase())) {
       detectedCompany = company;
-      reasons.push(`Message mentions ${company.name}`);
       break;
     }
   }
