@@ -14,13 +14,13 @@ const supabase = SUPABASE_URL && SUPABASE_KEY? createClient(SUPABASE_URL, SUPABA
 
 // ===== RATE LIMITER =====
 const rateLimitStore = new Map();
-const RATE_LIMIT = 30;
-const RATE_WINDOW = 60 * 1000;
+const RATE_LIMIT = 3;
+const RATE_WINDOW = 24 * 60 * 60 * 1000; // 24 hours
 
 async function isPremiumUser(userId) {
   if (!supabase ||!userId) return false;
   const { data } = await supabase
-   .from('profiles') // CHANGE THIS to your Supabase table name
+   .from('profile') // CHANGE THIS to your Supabase table name
    .select('plan')
    .eq('id', userId)
    .single();
@@ -109,10 +109,7 @@ export default async function handler(req, res) {
 
   const forwarded = req.headers['x-forwarded-for'];
   const ip = forwarded? forwarded.split(',')[0].trim() : req.socket.remoteAddress || 'unknown';
-  const rateCheck = await checkRateLimit(ip);
-  if (!rateCheck.allowed) {
-    return res.status(429).json({ error: 'Too many requests', retryAfter: rateCheck.retryAfter });
-  }
+
 const parseResult = RequestSchema.safeParse(req.body);
 if (!parseResult.success) {
   return res.status(400).json({ error: 'Invalid request', details: parseResult.error.issues });
@@ -148,10 +145,7 @@ if (!rateCheck.allowed) {
     return res.status(200).json(result);
   } catch (error) {
     console.error('Handler error:', error);
-    return res.status(200).json({
- ...result,
-  checksRemaining: rateCheck.remaining
-});
+    return res.status(500).json({ error: 'Analysis failed', message: error.message });
   }
 }
 
