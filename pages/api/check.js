@@ -113,13 +113,22 @@ export default async function handler(req, res) {
   if (!rateCheck.allowed) {
     return res.status(429).json({ error: 'Too many requests', retryAfter: rateCheck.retryAfter });
   }
+const parseResult = RequestSchema.safeParse(req.body);
+if (!parseResult.success) {
+  return res.status(400).json({ error: 'Invalid request', details: parseResult.error.issues });
+}
+const { text, userId } = parseResult.data; // ADDED userId
 
-  const parseResult = RequestSchema.safeParse(req.body);
-  if (!parseResult.success) {
-    return res.status(400).json({ error: 'Invalid request', details: parseResult.error.issues });
-  }
-  
-  const { text } = parseResult.data;
+const userIsPremium = await isPremiumUser(userId); // NEW
+const rateCheck = await checkRateLimit(ip, userIsPremium); // CHANGED
+
+if (!rateCheck.allowed) {
+  return res.status(429).json({ 
+    error: 'Too many requests', 
+    retryAfter: rateCheck.retryAfter,
+    checksRemaining: 0 // NEW
+  });
+}
   try {
     const result = analyzeMessage(text);
     if (supabase && result.score >= 40) {
@@ -139,7 +148,10 @@ export default async function handler(req, res) {
     return res.status(200).json(result);
   } catch (error) {
     console.error('Handler error:', error);
-    return res.status(500).json({ error: 'Analysis failed', message: error.message });
+    return res.status(200).json({
+ ...result,
+  checksRemaining: rateCheck.remaining
+});
   }
 }
 
