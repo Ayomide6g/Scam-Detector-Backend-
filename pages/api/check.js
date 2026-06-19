@@ -17,6 +17,16 @@ const rateLimitStore = new Map();
 const RATE_LIMIT = 30;
 const RATE_WINDOW = 60 * 1000;
 
+async function isPremiumUser(userId) {
+  if (!supabase ||!userId) return false;
+  const { data } = await supabase
+   .from('profiles') // CHANGE THIS to your Supabase table name
+   .select('plan')
+   .eq('id', userId)
+   .single();
+  return data?.plan === 'premium'; // CHANGE 'premium' to your plan value
+}
+
 async function checkRateLimit(ip) {
   const now = Date.now();
   const userRequests = rateLimitStore.get(ip) || [];
