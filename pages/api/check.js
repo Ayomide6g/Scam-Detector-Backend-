@@ -27,7 +27,29 @@ async function isPremiumUser(userId) {
   return data?.plan === 'premium'; // CHANGE 'premium' to your plan value
 }
 
-async function checkRateLimit(ip) {
+async function checkRateLimit(ip, isPremium) {
+  if (isPremium) return { allowed: true, remaining: 'unlimited' };
+
+  const now = Date.now();
+  const userRequests = rateLimitStore.get(ip) || [];
+  const recentRequests = userRequests.filter(time => now - time < RATE_WINDOW);
+
+  if (recentRequests.length >= RATE_LIMIT) {
+    return {
+      allowed: false,
+      remaining: 0,
+      retryAfter: Math.ceil((recentRequests[0] + RATE_WINDOW - now) / 1000)
+    };
+  }
+
+  recentRequests.push(now);
+  rateLimitStore.set(ip, recentRequests);
+
+  return {
+    allowed: true,
+    remaining: RATE_LIMIT - recentRequests.length
+  };
+      }
   const now = Date.now();
   const userRequests = rateLimitStore.get(ip) || [];
   const recentRequests = userRequests.filter(time => now - time < RATE_WINDOW);
