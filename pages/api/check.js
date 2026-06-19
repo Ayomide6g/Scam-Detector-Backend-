@@ -40,7 +40,10 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 // ===== VALIDATION =====
-const RequestSchema = z.object({ text: z.string().min(1).max(5000) });
+const RequestSchema = z.object({ 
+  text: z.string().min(1).max(5000),
+  userId: z.string().optional() 
+});
 
 function sanitizeInput(text) {
   if (!text || typeof text !== 'string') return '';
