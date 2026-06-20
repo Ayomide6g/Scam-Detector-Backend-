@@ -147,7 +147,10 @@ if (!rateCheck.allowed) {
     console.error('Supabase log error:', e);
   }
     }
-    return res.status(200).json(result);
+    return res.status(200).json({
+  ...result,
+  checksRemaining: rateCheck.remaining
+});
   } catch (error) {
     console.error('Handler error:', error);
     return res.status(500).json({ error: 'Analysis failed', message: error.message });
