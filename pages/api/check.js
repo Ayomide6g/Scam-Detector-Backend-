@@ -121,16 +121,6 @@ if (!parseResult.success) {
 }
 const { text, userId } = parseResult.data; // ADDED userId
 
-const userIsPremium = await isPremiumUser(userId); // NEW
-const rateCheck = await checkRateLimit(ip, userIsPremium); // CHANGED
-
-if (!rateCheck.allowed) {
-  return res.status(429).json({ 
-    error: 'Too many requests', 
-    retryAfter: rateCheck.retryAfter,
-    checksRemaining: 0 // NEW
-  });
-}
   try {
     const result = analyzeMessage(text);
     if (supabase && result.score >= 40) {
@@ -147,10 +137,7 @@ if (!rateCheck.allowed) {
     console.error('Supabase log error:', e);
   }
     }
-    return res.status(200).json({
-  ...result,
-  checksRemaining: rateCheck.remaining
-});
+    return res.status(200).json(result);
   } catch (error) {
     console.error('Handler error:', error);
     return res.status(500).json({ error: 'Analysis failed', message: error.message });
