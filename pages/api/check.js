@@ -13,53 +13,58 @@ const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const supabase = SUPABASE_URL && SUPABASE_KEY? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 // ===== RATE LIMITER =====
-const rateLimitStore = new Map();
 const RATE_LIMIT = 3;
 const RATE_WINDOW = 24 * 60 * 60 * 1000; // 24 hours
 
 async function isPremiumUser(userId) {
   if (!supabase ||!userId) return false;
   const { data } = await supabase
-   .from('profile') // CHANGE THIS to your Supabase table name
+   .from('profile')
    .select('plan')
    .eq('id', userId)
    .single();
-  return data?.plan === 'premium'; // CHANGE 'premium' to your plan value
+  return data?.plan === 'premium';
 }
 
 async function checkRateLimit(ip, isPremium) {
   if (isPremium) return { allowed: true, remaining: 'unlimited' };
+  if (!supabase) return { allowed: true, remaining: RATE_LIMIT };
 
-  const now = Date.now();
-  const userRequests = rateLimitStore.get(ip) || [];
-  const recentRequests = userRequests.filter(time => now - time < RATE_WINDOW);
+  const now = new Date();
+  const windowStart = new Date(now.getTime() - RATE_WINDOW);
 
-  if (recentRequests.length >= RATE_LIMIT) {
-    return {
-      allowed: false,
-      remaining: 0,
-      retryAfter: Math.ceil((recentRequests[0] + RATE_WINDOW - now) / 1000)
-    };
+  const { data: record } = await supabase
+   .from('rate_limits')
+   .select('*')
+   .eq('ip', ip)
+   .single();
+
+  // Reset if 24h passed
+  if (record && new Date(record.window_start) < windowStart) {
+    await supabase.from('rate_limits')
+     .update({ requests: 1, window_start: now })
+     .eq('ip', ip);
+    return { allowed: true, remaining: RATE_LIMIT - 1 };
   }
 
-  recentRequests.push(now);
-  rateLimitStore.set(ip, recentRequests);
-
-  return {
-    allowed: true,
-    remaining: RATE_LIMIT - recentRequests.length
-  };
-      }
-  
-// CLEANUP
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, times] of rateLimitStore.entries()) {
-    const recent = times.filter(t => now - t < RATE_WINDOW);
-    if (recent.length === 0) rateLimitStore.delete(ip);
-    else rateLimitStore.set(ip, recent);
+  // Block if over limit
+  if (record && record.requests >= RATE_LIMIT) {
+    const retryAfter = Math.ceil((new Date(record.window_start).getTime() + RATE_WINDOW - now.getTime()) / 1000);
+    return { allowed: false, remaining: 0, retryAfter };
   }
-}, 5 * 60 * 1000);
+
+  // Increment count
+  if (record) {
+    await supabase.from('rate_limits')
+     .update({ requests: record.requests + 1 })
+     .eq('ip', ip);
+    return { allowed: true, remaining: RATE_LIMIT - (record.requests + 1) };
+  } else {
+    await supabase.from('rate_limits')
+     .insert({ ip: ip, requests: 1, window_start: now });
+    return { allowed: true, remaining: RATE_LIMIT - 1 };
+  }
+              }
 
 // ===== VALIDATION =====
 const RequestSchema = z.object({ 
