@@ -40,6 +40,6 @@ export default async function handler(req, res) {
    .eq('ip', ip)
    .maybeSingle();
 
-  const remaining = record? Math.max(RATE_LIMIT - record.requests, 0) : RATE_LIMIT;
+  const remaining = record && record.requests >= RATE_LIMIT ? 0 : record ? Math.max(RATE_LIMIT - record.requests, 0) : RATE_LIMIT;
   res.status(200).json({ checksRemaining: remaining, isPro: false });
 }
