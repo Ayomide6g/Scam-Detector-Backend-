@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_KEY
- ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
+  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
   : null;
 
 const RATE_LIMIT = 3;
@@ -14,13 +14,13 @@ export default async function handler(req, res) {
 
   // 1. Check if user is Pro first
   if (supabase && userId) {
-    const { data: user } = await supabase
-     .from('users')
-     .select('is_pro')
-     .eq('id', userId)
-     .maybeSingle();
+    const { data: profile } = await supabase
+      .from('profile')
+      .select('plan')
+      .eq('id', userId)
+      .maybeSingle();
 
-    if (user?.is_pro === true) {
+    if (profile?.plan === 'pro') {
       return res.status(200).json({
         checksRemaining: 'unlimited',
         isPro: true
@@ -28,18 +28,19 @@ export default async function handler(req, res) {
     }
   }
 
-  // 2. If not Pro, run your existing IP-based 3/day logic
+  // 2. Use userId as identifier, fall back to IP
   const forwarded = req.headers['x-forwarded-for'];
-  const ip = forwarded? forwarded.split(',')[0].trim() : req.socket.remoteAddress || 'unknown';
+  const ip = forwarded ? forwarded.split(',')[0].trim() : req.socket.remoteAddress || 'unknown';
+  const identifier = userId || ip;
 
   if (!supabase) return res.status(200).json({ checksRemaining: RATE_LIMIT });
 
   const { data: record } = await supabase
-   .from('rate_limits')
-   .select('requests')
-   .eq('ip', ip)
-   .maybeSingle();
+    .from('rate_limits')
+    .select('requests')
+    .eq('ip', identifier)
+    .maybeSingle();
 
   const remaining = record && record.requests >= RATE_LIMIT ? 0 : record ? Math.max(RATE_LIMIT - record.requests, 0) : RATE_LIMIT;
   res.status(200).json({ checksRemaining: remaining, isPro: false });
-}
+   }
