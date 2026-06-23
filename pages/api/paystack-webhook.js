@@ -208,4 +208,4 @@ function getUserId(event) {
     event?.data?.subscription?.customer?.metadata?.userId ||
     null
   );
-}
+                                   }
