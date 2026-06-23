@@ -213,6 +213,16 @@ function analyzeMessage(text) {
         reasons.push(`Link goes to trusted domain: ${cleanUrl}`);
       }
       score = Math.max(score, 0);
+      const phishingPathWords = ['login', 'verify', 'verification', 'secure', 'update', 'suspended', 'wallet', 'banking', 'account', 'support', 'confirm', 'validate', 'recover', 'unlock'];
+const fullUrl = url.toLowerCase();
+const phishingHits = phishingPathWords.filter(w => fullUrl.includes(w));
+if (phishingHits.length >= 2) {
+  score += 30;
+  reasons.push(`Phishing URL pattern detected: "${phishingHits.join(', ')}" in ${cleanUrl}`);
+} else if (phishingHits.length === 1) {
+  score += 10;
+  reasons.push(`Suspicious word in URL: "${phishingHits[0]}" in ${cleanUrl}`);
+}
       
       if (detectedCompany) {
         for (const officialDomain of detectedCompany.domains) {
