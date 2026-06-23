@@ -14,10 +14,6 @@ const supabase = SUPABASE_URL && SUPABASE_KEY? createClient(SUPABASE_URL, SUPABA
 
 // ===== RATE LIMITER =====
 const RATE_LIMIT = 3;
-const RATE_WINDOW = 24 * 60 * 60 * 1000; // 24 hours
-
-// ===== RATE LIMITER =====
-const RATE_LIMIT = 3;
 
 async function isPremiumUser(userId) {
   if (!supabase ||!userId) return false;
