@@ -214,10 +214,20 @@ const whitelist = [
         score += 50;
         reasons.push(`IP address used instead of domain`);
       }
-      if (whitelist.some(safe => cleanUrl.includes(safe))) {
-        score -= 20;
-        reasons.push(`Link goes to trusted domain: ${cleanUrl}`);
-      }
+      const parsedDomain = parsed?.domain && parsed?.publicSuffix 
+  ? `${parsed.domain}.${parsed.publicSuffix}` 
+  : null;
+
+const isWhitelisted = parsedDomain && whitelist.some(safe => parsedDomain === safe);
+const isFakingWhitelisted = !isWhitelisted && whitelist.some(safe => cleanUrl.includes(safe));
+
+if (isWhitelisted) {
+  score -= 20;
+  reasons.push(`Link goes to trusted domain: ${cleanUrl}`);
+} else if (isFakingWhitelisted) {
+  score += 45;
+  reasons.push(`Domain impersonation detected: "${cleanUrl}" is pretending to be a trusted site — Do not click this link.`);
+}
       score = Math.max(score, 0);
       const phishingPathWords = ['login', 'verify', 'verification', 'secure', 'update', 'suspended', 'wallet', 'banking', 'account', 'support', 'confirm', 'validate', 'recover', 'unlock'];
 const fullUrl = url.toLowerCase();
