@@ -163,9 +163,15 @@ function analyzeMessage(text) {
   const lowerText = sanitizeInput(text);
   const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-z0-9-]+\.[a-z]{2,})/gi;
   const urls = rawText.match(urlRegex) || [];
-  const shorteners = ['bit.ly', 'tinyurl', 't.co', 'goo.gl', 'ow.ly', 'is.gd'];
-  const sketchyTlds = ['.tk', '.ml', '.ga', '.cf', '.gq', '.xyz', '.top', '.work'];
-  const whitelist = ['google.com', 'youtube.com', 'apple.com', 'paypal.com', 'binance.com', 'coinbase.com', 'instagram.com'];
+const shorteners = ['bit.ly', 'tinyurl', 't.co', 'goo.gl', 'ow.ly', 'is.gd', 'rb.gy', 'shorturl.at', 'cutt.ly', 'tiny.cc', 't.me', 'wa.me'];
+const sketchyTlds = ['.tk', '.ml', '.ga', '.cf', '.gq', '.xyz', '.top', '.work', '.click', '.link', '.online', '.site', '.icu'];
+const whitelist = [
+  'google.com', 'youtube.com', 'apple.com', 'paypal.com', 'binance.com',
+  'coinbase.com', 'instagram.com', 'mtn.ng', 'mtnonline.com', 'gtbank.com',
+  'zenithbank.com', 'firstbanknigeria.com', 'ubagroup.com', 'accessbankplc.com',
+  'kuda.com', 'opay.com', 'opayweb.com', 'flutterwave.com', 'cowrywise.com',
+  'piggyvest.com', 'momobank.ng', 'airtel.com.ng', 'carbon.ng', 'palmpay.com'
+];
   let score = 0;
   let reasons = [];
   let status = 'NO_CONTEXT';
