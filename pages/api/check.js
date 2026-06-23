@@ -399,6 +399,78 @@ cryptoScamPhrases.forEach(phrase => {
   }
 });
 // ===== END CRYPTO SCAM SIGNALS =====
+
+  // ===== FAKE JOB OFFERS =====
+const jobHiringWords = ['we are hiring', 'we are recruiting', 'job opportunity', 'online job', 'data entry job', 'form filling job', 'typing job', 'work from home'];
+const jobScamSignals = ['registration fee', 'training fee', 'starter pack fee', 'no experience needed', 'no experience required', 'earn 500k weekly', 'earn 200k weekly', 'earn 100k daily', 'guaranteed income', 'earn weekly', 'earn daily', 'instant payment'];
+
+const hasJobHiring = jobHiringWords.some(phrase => lowerText.includes(phrase));
+const hasJobScamSignal = jobScamSignals.some(phrase => lowerText.includes(phrase));
+
+if (hasJobHiring && hasJobScamSignal) {
+  score += 40;
+  reasons.push(`Fake job scam: job offer combined with unrealistic earnings or fees — Legitimate employers never charge registration or training fees.`);
+} else if (hasJobScamSignal) {
+  score += 30;
+  reasons.push(`Job scam signal: unrealistic earnings or suspicious fees detected — No legitimate job requires you to pay before you start.`);
+} else if (hasJobHiring) {
+  score += 5;
+  reasons.push(`Job offer mention detected — verify through official company channels before responding.`);
+}
+// ===== END FAKE JOB OFFERS =====
+
+  // ===== TIME PRESSURE =====
+const timePressurePhrases = [
+  'within 24 hours', 'within 48 hours', 'within 72 hours',
+  'before midnight', 'expires in', 'expiring soon',
+  'before 12am', 'before 12pm', 'respond immediately',
+  'reply immediately', 'act immediately', 'do this now',
+  'time is running out', 'running out of time',
+  'final notice', 'last notice', 'last warning'
+];
+
+const legitTimeContext = ['delivery', 'shipment', 'appointment', 'booking', 'reservation', 'subscription', 'renewal', 'invoice', 'bill'];
+const isLegitTimeContext = legitTimeContext.some(phrase => lowerText.includes(phrase));
+
+timePressurePhrases.forEach(phrase => {
+  if (lowerText.includes(phrase)) {
+    if (isLegitTimeContext) {
+      score += 5;
+      reasons.push(`Time-sensitive message — appears to be a legitimate notice but always verify through official channels.`);
+    } else {
+      score += 25;
+      reasons.push(`Time pressure tactic: "${phrase}" — Scammers create fake deadlines to stop you from thinking clearly. Legitimate companies always give reasonable time.`);
+    }
+  }
+});
+// ===== END TIME PRESSURE =====
+
+  // ===== ROMANCE SCAM SIGNALS =====
+const romanceAffectionWords = ['i love you', 'i miss you', 'my love', 'my darling', 'sweetheart', 'my dear'];
+const romanceMoneyPhrases = [
+  'send me airtime', 'send me recharge card', 'buy me airtime',
+  'stuck abroad', 'stranded abroad', 'stuck at the airport',
+  'my money is seized', 'my account is frozen',
+  'i need your help urgently', 'send gift card', 'buy gift card for me',
+  'itunes card', 'steam card', 'google play card',
+  'military officer', 'serving abroad', 'doctor abroad',
+  'widower', 'widow with child', 'want to relocate'
+];
+
+const hasAffection = romanceAffectionWords.some(phrase => lowerText.includes(phrase));
+const hasMoneyAngle = romanceMoneyPhrases.some(phrase => lowerText.includes(phrase));
+
+if (hasAffection && hasMoneyAngle) {
+  score += 40;
+  reasons.push(`Romance scam pattern: affection combined with money/gift request — Never send money or airtime to someone you haven't met in person.`);
+} else if (hasMoneyAngle) {
+  score += 30;
+  reasons.push(`Romance scam signal detected — requests for airtime, gift cards or money transfers are common scam tactics.`);
+} else if (hasAffection) {
+  score += 0;
+  // Normal conversation, don't flag
+}
+// ===== END ROMANCE SCAM SIGNALS =====
   
   let message = '';
   if (score === 0 && urls.length === 0 &&!hasKeywords) {
