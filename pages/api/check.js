@@ -286,14 +286,24 @@ HIGH_RISK_KEYWORDS.forEach(keyword => {
   }
 });
   
-  if (detectedCompany) {
-    for (const rule of detectedCompany.never_asks_for) {
-      if (hasWord(lowerText, rule.split(' ')[0])) {
+if (detectedCompany) {
+  const requestWords = ['send', 'share', 'provide', 'enter', 'submit', 'reply with', 'input', 'type', 'give', 'supply', 'forward'];
+  const hasRequestWord = requestWords.some(w => hasWord(lowerText, w));
+
+  for (const rule of detectedCompany.never_asks_for) {
+    const sensitiveTermDetected = hasWord(lowerText, rule.split(' ')[0]);
+
+    if (sensitiveTermDetected) {
+      if (hasRequestWord) {
         score += 35;
-        reasons.push(`${detectedCompany.name} never asks for "${rule}" via messages`);
+        reasons.push(`${detectedCompany.name} never asks for "${rule}" via messages — This is a scam tactic.`);
+      } else {
+        // Mention only, no action word — likely a notification
+        score += 0;
       }
     }
   }
+          }
 
     // ===== Context check for all critical data requests =====
   if (detectedCompany && score >= 40) {
