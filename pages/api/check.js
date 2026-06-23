@@ -360,6 +360,40 @@ isolationPhrases.forEach(phrase => {
 });
 // ===== END ISOLATION LANGUAGE =====
   
+  // ===== FAKE AUTHORITY =====
+const fakeAuthorityPhrases = [
+  'cbn approved', 'sec approved', 'efcc cleared', 'efcc approved',
+  'government approved', 'central bank of nigeria', 'federal government of nigeria',
+  'interpol', 'world bank grant', 'un grant', 'united nations fund',
+  'nigerian government', 'presidency approved', 'court ordered',
+  'legal clearance', 'tax clearance certificate'
+];
+
+fakeAuthorityPhrases.forEach(phrase => {
+  if (lowerText.includes(phrase)) {
+    score += 35;
+    reasons.push(`Fake authority claim: "${phrase}" — Real government agencies never approve payments or grants via SMS, WhatsApp, or email links.`);
+  }
+});
+// ===== END FAKE AUTHORITY =====
+  
+  // ===== CRYPTO SCAM SIGNALS =====
+const cryptoScamPhrases = [
+  'seed phrase', 'connect your wallet', 'wallet connect',
+  'approve transaction', 'gas fee', 'smart contract',
+  'nft giveaway', 'airdrop claim', 'whitelist spot',
+  'presale access', 'recovery phrase', 'sync your wallet',
+  'wallet validation', 'claim your token', 'free crypto'
+];
+
+cryptoScamPhrases.forEach(phrase => {
+  if (lowerText.includes(phrase)) {
+    score += 40;
+    reasons.push(`Crypto scam phrase: "${phrase}" — Never connect your wallet or share your seed phrase with anyone. No legitimate platform asks for this.`);
+  }
+});
+// ===== END CRYPTO SCAM SIGNALS =====
+  
   let message = '';
   if (score === 0 && urls.length === 0 &&!hasKeywords) {
     status = 'NO_CONTEXT';
