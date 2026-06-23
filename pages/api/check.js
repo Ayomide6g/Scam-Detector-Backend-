@@ -336,6 +336,29 @@ if (capsWords.length >= 3 && exclamationCount >= 3) {
   reasons.push('High-pressure formatting pattern detected');
 }
 // ===== END CAPS & PRESSURE =====
+
+  // ===== ISOLATION LANGUAGE =====
+const isolationPhrases = [
+  "don't tell anyone", "keep this secret", "between us",
+  "delete this message", "tell no one", "just between you and me",
+  "don't inform anyone"
+];
+
+const legitSecretContext = ['secret key', 'api key', 'private key generated', 'your key is', 'access key'];
+const isLegitSecretContext = legitSecretContext.some(phrase => lowerText.includes(phrase));
+
+isolationPhrases.forEach(phrase => {
+  if (lowerText.includes(phrase)) {
+    if (isLegitSecretContext) {
+      score += 5;
+      reasons.push(`Secrecy language detected — appears to be a credential notice, but be cautious. Legitimate companies never ask you to hide communications from others.`);
+    } else {
+      score += 30;
+      reasons.push(`Isolation language detected: "${phrase}" — Scammers use this to stop you from verifying with trusted people. Always tell someone before acting.`);
+    }
+  }
+});
+// ===== END ISOLATION LANGUAGE =====
   
   let message = '';
   if (score === 0 && urls.length === 0 &&!hasKeywords) {
