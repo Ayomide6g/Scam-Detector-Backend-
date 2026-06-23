@@ -299,6 +299,25 @@ HIGH_RISK_KEYWORDS.forEach(keyword => {
     }
   }
   // ===== END =====
+
+  // ===== COMBO MULTIPLIER =====
+const hasUrgency = ['urgent', 'act now', 'limited time', 'expires tonight', 'today only', 'last chance'].some(w => hasWord(lowerText, w));
+const hasMoney = ['send money', 'transfer', 'fee', 'payment', 'fund', 'investment'].some(w => hasWord(lowerText, w));
+const hasPersonalData = CRITICAL_KEYWORDS.some(k => hasWord(lowerText, k));
+
+if (hasUrgency && hasMoney && urls.length > 0) {
+  score += 30;
+  reasons.push('Dangerous combo: urgency + money request + link');
+}
+if (hasUrgency && hasPersonalData) {
+  score += 25;
+  reasons.push('Dangerous combo: urgency + sensitive data request');
+}
+if (hasMoney && hasPersonalData && urls.length > 0) {
+  score += 35;
+  reasons.push('Dangerous combo: money + personal data + link');
+}
+// ===== END COMBO MULTIPLIER =====
   
   let message = '';
   if (score === 0 && urls.length === 0 &&!hasKeywords) {
