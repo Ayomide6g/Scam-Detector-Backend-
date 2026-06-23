@@ -318,6 +318,24 @@ if (hasMoney && hasPersonalData && urls.length > 0) {
   reasons.push('Dangerous combo: money + personal data + link');
 }
 // ===== END COMBO MULTIPLIER =====
+
+  // ===== CAPS & PRESSURE =====
+const capsWords = (rawText.match(/\b[A-Z]{3,}\b/g) || []);
+const exclamationCount = (rawText.match(/!/g) || []).length;
+
+if (capsWords.length >= 3) {
+  score += 10;
+  reasons.push(`Aggressive capitalization: ${capsWords.length} all-caps words`);
+}
+if (exclamationCount >= 3) {
+  score += 10;
+  reasons.push(`Pressure language: ${exclamationCount} exclamation marks`);
+}
+if (capsWords.length >= 3 && exclamationCount >= 3) {
+  score += 10;
+  reasons.push('High-pressure formatting pattern detected');
+}
+// ===== END CAPS & PRESSURE =====
   
   let message = '';
   if (score === 0 && urls.length === 0 &&!hasKeywords) {
