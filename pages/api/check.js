@@ -233,26 +233,32 @@ function analyzeMessage(text) {
     }
   }
   
-  CRITICAL_KEYWORDS.forEach(keyword => {
-    if (hasWord(lowerText, keyword)) {
+  const requestWords = ['send', 'share', 'provide', 'enter', 'submit', 'reply with', 'input', 'type', 'give', 'supply', 'forward'];
+const hasRequestWord = requestWords.some(w => hasWord(lowerText, w));
+
+CRITICAL_KEYWORDS.forEach(keyword => {
+  if (hasWord(lowerText, keyword)) {
+    if (hasRequestWord) {
       score += 40;
       reasons.push(`Critical data request: "${keyword}"`);
+    } else {
+      score += 5;
+      reasons.push(`Sensitive term mentioned: "${keyword}" (no action word detected)`);
     }
-  });
-  
-  HIGH_RISK_KEYWORDS.forEach(keyword => {
-    if (hasWord(lowerText, keyword)) {
+  }
+});
+
+HIGH_RISK_KEYWORDS.forEach(keyword => {
+  if (hasWord(lowerText, keyword)) {
+    if (hasRequestWord) {
       score += 35;
       reasons.push(`High-risk phrase detected: "${keyword}"`);
+    } else {
+      score += 5;
+      reasons.push(`Risk term mentioned: "${keyword}" (no action word detected)`);
     }
-  });
-  
-  SUSPICIOUS_KEYWORDS.forEach(keyword => {
-    if (hasWord(lowerText, keyword)) {
-      score += 15;
-      reasons.push(`Suspicious phrase detected: "${keyword}"`);
-    }
-  });
+  }
+});
   
   if (detectedCompany) {
     for (const rule of detectedCompany.never_asks_for) {
