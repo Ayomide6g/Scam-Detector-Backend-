@@ -107,7 +107,18 @@ if (!parseResult.success) {
   return res.status(400).json({ error: 'Invalid request', details: parseResult.error.issues });
 }
 const { text, userId } = parseResult.data; // ADDED userId
+const identifier = userId || ip;
+const isPremium = await isPremiumUser(userId);
+const today = new Date().toISOString().split('T')[0];
 
+// Check rate limit BEFORE running AI scan
+const rateCheck = await checkRateLimit(identifier, isPremium);
+if (!rateCheck.allowed) {
+  return res.status(429).json({ 
+    error: 'Daily limit reached',
+    checksRemaining: 0 
+  });
+}
   try {
     const result = analyzeMessage(text);
     if (supabase && result.score >= 40) {
@@ -125,7 +136,7 @@ const { text, userId } = parseResult.data; // ADDED userId
   }
     }
     // Consume 1 request AFTER successful scan, only for non-premium users
-if (!isPremium) {
+if (isPremium) {
   await supabase.rpc('consume_rate_limit_slot', { 
     p_identifier: identifier, 
     p_today: today 
