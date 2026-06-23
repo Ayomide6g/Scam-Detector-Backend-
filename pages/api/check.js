@@ -526,12 +526,5 @@ if (hasAffection && hasMoneyAngle) {
   
   score = Math.min(Math.max(score, 0), 100);
   if (status === 'NO_CONTEXT') score = Math.min(score, 30);
-  const result = { 
-  status, 
-  score, 
-  message, 
-  company_detected: detectedCompany?.name || null, 
-  reasons: reasons.length? reasons : [] 
-};
-
-return result; // <-- just return the object, don't send response yet
+  return { status, score, message, company_detected: detectedCompany?.name || null, reasons: reasons.length? 
+    }
