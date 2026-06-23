@@ -16,55 +16,42 @@ const supabase = SUPABASE_URL && SUPABASE_KEY? createClient(SUPABASE_URL, SUPABA
 const RATE_LIMIT = 3;
 const RATE_WINDOW = 24 * 60 * 60 * 1000; // 24 hours
 
+// ===== RATE LIMITER =====
+const RATE_LIMIT = 3;
+
 async function isPremiumUser(userId) {
   if (!supabase ||!userId) return false;
   const { data } = await supabase
-   .from('profile')
-   .select('plan')
-   .eq('id', userId)
-   .single();
+.from('profile')
+.select('plan')
+.eq('id', userId)
+.single();
   return data?.plan === 'premium';
 }
 
-async function checkRateLimit(ip, isPremium) {
+async function checkRateLimit(identifier, isPremium) {
   if (isPremium) return { allowed: true, remaining: 'unlimited' };
   if (!supabase) return { allowed: true, remaining: RATE_LIMIT };
-
-  const now = new Date();
-  const windowStart = new Date(now.getTime() - RATE_WINDOW);
-
-  const { data: record } = await supabase
-   .from('rate_limits')
-   .select('*')
-   .eq('ip', ip)
-   .single();
-
-  // Reset if 24h passed
-  if (record && new Date(record.window_start) < windowStart) {
-    await supabase.from('rate_limits')
-     .update({ requests: 1, window_start: now })
-     .eq('ip', ip);
-    return { allowed: true, remaining: RATE_LIMIT - 1 };
-  }
-
-  // Block if over limit
-  if (record && record.requests >= RATE_LIMIT) {
-    const retryAfter = Math.ceil((new Date(record.window_start).getTime() + RATE_WINDOW - now.getTime()) / 1000);
-    return { allowed: false, remaining: 0, retryAfter };
-  }
-
-  // Increment count
-  if (record) {
-    await supabase.from('rate_limits')
-     .update({ requests: record.requests + 1 })
-     .eq('ip', ip);
-    return { allowed: true, remaining: RATE_LIMIT - (record.requests + 1) };
-  } else {
-    await supabase.from('rate_limits')
-     .insert({ ip: ip, requests: 1, window_start: now });
-    return { allowed: true, remaining: RATE_LIMIT - 1 };
-  }
-              }
+  
+  const today = new Date().toISOString().split('T')[0];
+  
+  const { data, error } = await supabase.rpc('check_and_reserve_slot', {
+    p_identifier: identifier,
+    p_today: today,
+    p_rate_limit: RATE_LIMIT
+  });
+  
+  if (error) throw new Error('Rate limit check failed');
+  
+  const { requests, blocked } = data[0];
+  const remaining = Math.max(RATE_LIMIT - requests, 0);
+  
+  return { 
+    allowed:!blocked, 
+    remaining: remaining,
+    retryAfter: blocked? 86400 : 0 // seconds until midnight
+  };
+    }
 
 // ===== VALIDATION =====
 const RequestSchema = z.object({ 
