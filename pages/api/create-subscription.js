@@ -23,7 +23,6 @@ export default async function handler(req, res) {
         plan: 'PLN_ohpfbish1gkugvk',
         metadata: { 
           userId: userId,
-          cancel_action: 'https://yourapp.com/payment-cancelled' // Optional
         },
         callback_url: 'https://scam-detector-backend.vercel.app/api/paystack-callback',
       }),
