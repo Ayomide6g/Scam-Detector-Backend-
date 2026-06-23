@@ -19,7 +19,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         email: email,
-        amount: 100, // ₦1 for card verification. Trial is still 7 days free
+        amount: 5000, // ₦50 for card verification. Trial is still 7 days free
         plan: 'PLN_ohpfbish1gkugvk',
         metadata: { 
           userId: userId,
