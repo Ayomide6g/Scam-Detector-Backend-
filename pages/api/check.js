@@ -124,7 +124,15 @@ const { text, userId } = parseResult.data; // ADDED userId
     console.error('Supabase log error:', e);
   }
     }
-    return res.status(200).json(result);
+    // Consume 1 request AFTER successful scan, only for non-premium users
+if (!isPremium) {
+  await supabase.rpc('consume_rate_limit_slot', { 
+    p_identifier: identifier, 
+    p_today: today 
+  });
+}
+
+return res.status(200).json(result);
   } catch (error) {
     console.error('Handler error:', error);
     return res.status(500).json({ error: 'Analysis failed', message: error.message });
