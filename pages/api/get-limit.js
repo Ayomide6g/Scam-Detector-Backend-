@@ -36,11 +36,17 @@ export default async function handler(req, res) {
   const today = new Date().toISOString().split('T')[0];
 
   // 3. Call atomic RPC to check + reserve slot WITHOUT consuming yet
-  const { data, error } = await supabase
+  const todayStart = new Date();
+todayStart.setHours(0, 0, 0, 0);
+const todayEnd = new Date();
+todayEnd.setHours(23, 59, 59, 999);
+
+const { data, error } = await supabase
   .from('rate_limits')
   .select('requests')
-  .eq('identifier', identifier)
-  .eq('date', today)
+  .eq('ip', identifier)
+  .gte('window_st', todayStart.toISOString())
+  .lte('window_st', todayEnd.toISOString())
   .maybeSingle();
 
 if (error) {
