@@ -1,60 +1,64 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_KEY
-? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
-  : null;
-
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 const RATE_LIMIT = 3;
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // Fix: Check both body and query for userId
   const userId = req.body?.userId || req.query?.userId;
+  const consume = req.method === 'POST';
 
-  // 1. Check if user is Pro first
-  if (supabase && userId) {
+  // Pro bypass
+  if (userId) {
     const { data: profile } = await supabase
    .from('profile')
    .select('plan')
    .eq('id', userId)
    .maybeSingle();
-
     if (profile?.plan === 'pro') {
       return res.status(200).json({ checksRemaining: 'unlimited', isPro: true });
     }
   }
 
-  // 2. Use userId as identifier, fall back to IP
+  // Identifier stays same across devices if logged in
   const forwarded = req.headers['x-forwarded-for'];
   const ip = forwarded? forwarded.split(',')[0].trim() : req.socket.remoteAddress || 'unknown';
   const identifier = userId || ip;
 
-  if (!supabase) return res.status(200).json({ checksRemaining: RATE_LIMIT });
+  // Today as 20260624
+  const d = new Date();
+  const today = Number(`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`);
 
-  const today = new Date().toISOString().split('T')[0];
+  // Find row for this identifier today
+  const { data: row } = await supabase
+ .from('rate_limits')
+ .select('window')
+ .eq('ip', identifier)
+ .gte('window', today * 100) // 2026062400
+ .lt('window', (today + 1) * 100) // 2026062500
+ .maybeSingle();
 
-  // 3. Call atomic RPC to check + reserve slot WITHOUT consuming yet
-  const todayStart = new Date();
-todayStart.setHours(0, 0, 0, 0);
-const todayEnd = new Date();
-todayEnd.setHours(23, 59, 59, 999);
+  // Last 2 digits = used count
+  const used = row? Number(String(row.window).slice(-2)) : 0;
+  const remaining = Math.max(RATE_LIMIT - used, 0);
 
-const { data, error } = await supabase
-  .from('rate_limits')
-  .select('requests')
-  .eq('ip', identifier)
-  .gte('window_st', todayStart.toISOString())
-  .lte('window_st', todayEnd.toISOString())
-  .maybeSingle();
+  if (!consume) {
+    return res.status(200).json({ checksRemaining: remaining, isPro: false });
+  }
 
-if (error) {
-  console.error('Rate limit fetch error:', error);
-  return res.status(500).json({ error: 'Rate limit check failed' });
-}
+  if (remaining <= 0) {
+    return res.status(429).json({ error: 'Daily limit reached', checksRemaining: 0 });
+  }
 
-const used = data?.requests ?? 0;
-const remaining = Math.max(RATE_LIMIT - used, 0);
-res.status(200).json({ checksRemaining: remaining, isPro: false });
+  // New value: 20260624 + 01 = 2026062401
+  const newWindow = today * 100 + (used + 1);
+
+  if (row) {
+    await supabase.from('rate_limits').delete().eq('ip', identifier).eq('window', row.window);
+  }
+  await supabase.from('rate_limits').insert({ ip: identifier, window: newWindow });
+
+  return res.status(200).json({ checksRemaining: remaining - 1, isPro: false });
 }
