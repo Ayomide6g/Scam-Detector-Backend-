@@ -57,3 +57,4 @@ if (error) {
 const used = data?.requests ?? 0;
 const remaining = Math.max(RATE_LIMIT - used, 0);
 res.status(200).json({ checksRemaining: remaining, isPro: false });
+}
