@@ -132,12 +132,12 @@ if (!rateCheck.allowed) {
   }
     }
     // Consume 1 request AFTER successful scan, only for non-premium users
-if (isPremium) {
+if (!isPremium) {
   await supabase.rpc('consume_rate_limit_slot', { 
     p_identifier: identifier, 
     p_today: today 
   });
-}
+        }
 
 return res.status(200).json(result);
   } catch (error) {
@@ -526,5 +526,11 @@ if (hasAffection && hasMoneyAngle) {
   
   score = Math.min(Math.max(score, 0), 100);
   if (status === 'NO_CONTEXT') score = Math.min(score, 30);
-  return { status, score, message, company_detected: detectedCompany?.name || null, reasons: reasons.length? 
-    }
+  return { 
+  status, 
+  score, 
+  message, 
+  company_detected: detectedCompany?.name || null, 
+  reasons: reasons.length ? reasons : ['No issues detected']
+};
+}
