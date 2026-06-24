@@ -139,7 +139,10 @@ if (!isPremium) {
   });
         }
 
-return res.status(200).json(result);
+return res.status(200).json({ 
+  ...result, 
+  checksRemaining: isPremium ? 'unlimited' : Math.max(rateCheck.remaining - 1, 0)
+});
   } catch (error) {
     console.error('Handler error:', error);
     return res.status(500).json({ error: 'Analysis failed', message: error.message });
