@@ -36,30 +36,18 @@ export default async function handler(req, res) {
   const today = new Date().toISOString().split('T')[0];
 
   // 3. Call atomic RPC to check + reserve slot WITHOUT consuming yet
-  const { data, error } = await supabase.rpc('check_and_reserve_slot', {
-    p_identifier: identifier,
-    p_today: today,
-    p_rate_limit: RATE_LIMIT
-  });
+  const { data, error } = await supabase
+  .from('rate_limits')
+  .select('requests')
+  .eq('identifier', identifier)
+  .eq('date', today)
+  .maybeSingle();
 
-  if (error) {
-    console.error('Rate limit RPC error:', error);
-    return res.status(500).json({ error: 'Rate limit check failed' });
-  }
-
-  const { requests, blocked } = data[0];
-
-  // 4. Return 429 if limit reached
-  if (blocked) {
-    return res.status(429).json({ 
-      error: 'Daily limit reached', 
-      checksRemaining: 0,
-      isPro: false 
-    });
-  }
-
-  // 5. If we got here, slot is reserved. Return remaining
-  // Request only gets consumed after successful scan in your main endpoint
-  const remaining = Math.max(RATE_LIMIT - requests, 0);
-  res.status(200).json({ checksRemaining: remaining, isPro: false });
+if (error) {
+  console.error('Rate limit fetch error:', error);
+  return res.status(500).json({ error: 'Rate limit check failed' });
 }
+
+const used = data?.requests ?? 0;
+const remaining = Math.max(RATE_LIMIT - used, 0);
+res.status(200).json({ checksRemaining: remaining, isPro: false });
