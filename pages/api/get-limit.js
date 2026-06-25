@@ -358,11 +358,15 @@ export default async function handler(req, res) {
 
   // Get or create record
   let { data: record } = await supabase
-   .from('rate_limits')
-   .select('*')
-   .eq('ip', identifier)
-   .maybeSingle();
+ .from('rate_limits')
+ .select('*')
+ .eq('ip', identifier)
+ .maybeSingle();
 
-  if (!record) {
-    await supabase.from('rate_limits').insert({ ip: identifier, requests: 0, window_st: today });
-   
+if (!record) {
+  await supabase.from('rate_limits').insert({ ip: identifier, requests: 0, window_st: today });
+  record = { requests: 0 };
+} else if (record.window_st!== today) {
+  await supabase.from('rate_limits').update({ requests: 0, window_st: today }).eq('ip', identifier);
+  record = { requests: 0 };
+}
