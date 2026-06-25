@@ -362,4 +362,51 @@ export default async function handler(req, res) {
     await supabase.from('rate_limits').insert({ ip: identifier, requests: 0, window_st: today });
     record = { requests: 0 };
   } else if (record.window_st!== today) {
-    await supabase.from('rate_limits').update({ requests: 0, win
+        await supabase.from('rate_limits').update({ requests: 0, window_st: today }).eq('ip', identifier);
+    record = { requests: 0 };
+  }
+
+  const used = record.requests ?? 0;
+
+  if (req.method === 'GET') {
+    return res.status(200).json({ checksRemaining: Math.max(RATE_LIMIT - used, 0) });
+  }
+
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const apiKey = req.headers['x-api-key'];
+  if (API_KEY !== 'your-secret-key' && apiKey !== API_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const parseResult = RequestSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: 'Invalid request', details: parseResult.error.issues });
+  }
+
+  if (used >= RATE_LIMIT) {
+    return res.status(429).json({ error: 'Daily limit reached', checksRemaining: 0 });
+  }
+
+  const { text } = parseResult.data;
+  const result = analyzeMessage(text);
+
+  await supabase.from('rate_limits').update({ requests: used + 1 }).eq('ip', identifier);
+
+  if (supabase && result.score >= 40) {
+    try {
+      await supabase.from('scam_logs').insert({
+        ip: ip,
+        text_preview: text.substring(0, 100),
+        score: result.score,
+        status: result.status,
+        company: result.company_detected,
+        created_at: new Date().toISOString()
+      });
+    } catch (e) {
+      console.error('Supabase log error:', e);
+    }
+  }
+
+  return res.status(200).json({...result, checksRemaining: RATE_LIMIT - (used + 1) });
+}
