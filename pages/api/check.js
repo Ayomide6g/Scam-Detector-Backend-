@@ -25,30 +25,6 @@ async function isPremiumUser(userId) {
   return data?.plan === 'premium';
 }
 
-async function checkRateLimit(identifier, isPremium) {
-  if (isPremium) return { allowed: true, remaining: 'unlimited' };
-  if (!supabase) return { allowed: true, remaining: RATE_LIMIT };
-  
-  const today = new Date().toISOString().split('T')[0];
-  
-  const { data, error } = await supabase.rpc('check_and_reserve_slot', {
-    p_identifier: identifier,
-    p_today: today,
-    p_rate_limit: RATE_LIMIT
-  });
-  
-  if (error) throw new Error('Rate limit check failed');
-  
-  const { requests, blocked } = data[0];
-  const remaining = Math.max(RATE_LIMIT - requests, 0);
-  
-  return { 
-    allowed:!blocked, 
-    remaining: remaining,
-    retryAfter: blocked? 86400 : 0 // seconds until midnight
-  };
-    }
-
 // ===== VALIDATION =====
 const RequestSchema = z.object({ 
   text: z.string().min(1).max(5000),
