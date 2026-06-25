@@ -46,7 +46,7 @@ export default async function handler(req, res) {
   const { data: record } = await supabase
    .from('rate_limits')
    .select('requests, window_st')
-   .eq('ip', userId) // Using userId as the identifier so it follows them everywhere
+   .eq('ip', String(userId)) // Using userId as the identifier so it follows them everywhere
    .maybeSingle();
 
   // New user or first check ever = 3 checks
