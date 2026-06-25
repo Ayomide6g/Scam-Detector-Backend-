@@ -8,7 +8,6 @@ const RATE_LIMIT = 3;
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '*';
 const API_KEY = process.env.API_KEY || 'your-secret-key';
 
-// ===== VALIDATION =====
 const RequestSchema = z.object({
   text: z.string().min(1).max(5000),
   userId: z.string().optional()
@@ -27,7 +26,6 @@ function hasWord(text, word) {
   return regex.test(text);
 }
 
-// ===== COMPANY DATABASE =====
 const COMPANY_REGISTRY = [
   { name: 'MoMo PSB', industry: 'Fintech', domains: ['momobank.ng', 'momo.ng'], ussd: ['*671#'], never_asks_for: ['id via whatsapp', 'id via email link', 'bvn via whatsapp', 'bvn via sms link', 'account pin via chat', 'otp via telegram'], official_channels: 'MoMo app or *671#' },
   { name: 'GTBank', industry: 'Bank', domains: ['gtbank.com'], ussd: ['*737#'], never_asks_for: ['bvn via whatsapp', 'bvn via email link', 'token via sms link', 'token via whatsapp', 'password via email', 'card pin via chat'], official_channels: 'GTWorld app or *737#' },
@@ -320,7 +318,6 @@ function analyzeMessage(text) {
   return { status, score, message, company_detected: detectedCompany?.name || null, reasons: reasons.length? reasons : ['No issues detected'] };
 }
 
-// ===== MAIN HANDLER =====
 export default async function handler(req, res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -338,13 +335,12 @@ export default async function handler(req, res) {
   const identifier = userId || ip;
   const today = new Date().toISOString().split('T')[0];
 
-  // Pro bypass
   if (userId) {
     const { data: profile } = await supabase
-     .from('profile')
-     .select('plan')
-     .eq('id', userId)
-     .maybeSingle();
+    .from('profile')
+    .select('plan')
+    .eq('id', userId)
+    .maybeSingle();
     if (profile?.plan === 'pro' || profile?.plan === 'premium') {
       if (req.method === 'GET') return res.status(200).json({ checksRemaining: 'unlimited' });
       if (req.method === 'POST') {
@@ -356,17 +352,14 @@ export default async function handler(req, res) {
     }
   }
 
-  // Get or create record
   let { data: record } = await supabase
- .from('rate_limits')
- .select('*')
- .eq('ip', identifier)
- .maybeSingle();
+  .from('rate_limits')
+  .select('*')
+  .eq('ip', identifier)
+  .maybeSingle();
 
-if (!record) {
-  await supabase.from('rate_limits').insert({ ip: identifier, requests: 0, window_st: today });
-  record = { requests: 0 };
-} else if (record.window_st!== today) {
-  await supabase.from('rate_limits').update({ requests: 0, window_st: today }).eq('ip', identifier);
-  record = { requests: 0 };
-}
+  if (!record) {
+    await supabase.from('rate_limits').insert({ ip: identifier, requests: 0, window_st: today });
+    record = { requests: 0 };
+  } else if (record.window_st!== today) {
+    await supabase.from('rate_limits').update({ requests: 0, win
