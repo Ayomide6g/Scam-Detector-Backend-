@@ -333,9 +333,12 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const userId = req.method === 'GET'? req.query.userId : req.body?.userId;
-  const forwarded = req.headers['x-forwarded-for'];
-  const ip = forwarded? forwarded.split(',')[0].trim() : req.socket.remoteAddress || 'unknown';
-  const identifier = userId || ip;
+if (!userId) {
+  return res.status(400).json({ error: 'userId required' });
+}
+const identifier = userId;
+const forwarded = req.headers['x-forwarded-for'];
+const ip = forwarded? forwarded.split(',')[0].trim() : req.socket.remoteAddress || 'unknown';
   const today = new Date().toISOString().split('T')[0];
 
   if (userId) {
