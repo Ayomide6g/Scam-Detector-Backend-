@@ -361,10 +361,10 @@ if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allo
 
 // POST = ONLY HERE do we create/update the database
 let { data: record, error: selectError } = await supabase
-  .from('rate_limits')
-  .select('*')
-  .eq('ip', identifier)
-  .maybeSingle();
+ .from('rate_limits')
+ .select('*')
+ .eq('ip', identifier)
+ .maybeSingle();
 
 if (selectError) {
   console.error('Select error:', selectError);
@@ -372,11 +372,15 @@ if (selectError) {
 }
 
 let requests = 0;
-let window_st = today;
+let window_start = new Date().toISOString(); // timestamptz needs full ISO
 
 if (record) {
-  if (record.window_st === today) {
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const recordDate = new Date(record.window_start).toISOString().split('T')[0];
+
+  if (recordDate === today) {
     requests = record.requests;
+    window_start = record.window_start; // keep existing timestamp
   }
 }
 
@@ -393,12 +397,12 @@ const { text } = parseResult.data;
 const result = analyzeMessage(text);
 
 const { error: upsertError } = await supabase
-  .from('rate_limits')
-  .upsert({ 
-    ip: identifier, 
-    requests: requests + 1, 
-    window_st: window_st 
-  }, { 
+ .from('rate_limits')
+ .upsert({
+    ip: identifier,
+    requests: requests + 1,
+    window_start: window_start
+  }, {
     onConflict: 'ip'
   });
 
@@ -409,21 +413,21 @@ if (upsertError) {
 
 if (result.score >= 40) {
   try {
-    await supabase.from('scam_logs').insert({ 
-      ip: ip, 
-      text_preview: text.substring(0, 100), 
-      score: result.score, 
-      status: result.status, 
-      company: result.company_detected, 
-      created_at: new Date().toISOString() 
+    await supabase.from('scam_logs').insert({
+      ip: ip,
+      text_preview: text.substring(0, 100),
+      score: result.score,
+      status: result.status,
+      company: result.company_detected,
+      created_at: new Date().toISOString()
     });
-  } catch (e) { 
-    console.error('Supabase log error:', e); 
+  } catch (e) {
+    console.error('Supabase log error:', e);
   }
 }
 
 return res.status(200).json({
-  ...result, 
-  checksRemaining: RATE_LIMIT - (requests + 1) 
+ ...result,
+  checksRemaining: RATE_LIMIT - (requests + 1)
 });
 }
