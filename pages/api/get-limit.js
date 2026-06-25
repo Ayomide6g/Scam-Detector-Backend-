@@ -42,20 +42,29 @@ export default async function handler(req, res) {
     return res.status(200).json({ checksRemaining: 'unlimited', plan: profile.plan });
   }
 
-  // READ ONLY - Free user logic
+  // Free user logic
   const { data: record } = await supabase
    .from('rate_limits')
    .select('requests, window_start')
    .eq('ip', String(userId)) // Using userId as the identifier so it follows them everywhere
    .maybeSingle();
 
-  // New user or first check ever = 3 checks
+  // New user or first check ever = create row with 0 used
   if (!record) {
+    await supabase
+     .from('rate_limits')
+     .insert({ ip: String(userId), requests: 0, window_start: today });
+
     return res.status(200).json({ checksRemaining: RATE_LIMIT, plan: 'free' });
   }
 
-  // New day = reset to 3. But we DON'T write to DB here. POST will handle the reset.
+  // New day = reset to 0 in DB, return 3 to user
   if (record.window_start!== today) {
+    await supabase
+     .from('rate_limits')
+     .update({ requests: 0, window_start: today })
+     .eq('ip', String(userId));
+
     return res.status(200).json({ checksRemaining: RATE_LIMIT, plan: 'free' });
   }
 
