@@ -1,48 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
-
-const supabase = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
-
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 const RATE_LIMIT = 3;
-const RATE_WINDOW = 24 * 60 * 60 * 1000;
-
-async function checkRateLimitPublic(identifier) {
-  if (!supabase) return { allowed: true, remaining: RATE_LIMIT };
-
-  const now = new Date();
-  const windowStart = new Date(now.getTime() - RATE_WINDOW);
-
-  const { data: record } = await supabase
-    .from('rate_limits')
-    .select('*')
-    .eq('ip', identifier)
-    .maybeSingle();
-
-  if (record && new Date(record.window_start) < windowStart) {
-    await supabase.from('rate_limits')
-      .update({ requests: 1, window_start: now })
-      .eq('ip', identifier);
-    return { allowed: true, remaining: RATE_LIMIT - 1 };
-  }
-
-  if (record && record.requests >= RATE_LIMIT) {
-    const retryAfter = Math.ceil((new Date(record.window_start).getTime() + RATE_WINDOW - now.getTime()) / 1000);
-    return { allowed: false, remaining: 0, retryAfter };
-  }
-
-  if (record) {
-    await supabase.from('rate_limits')
-      .update({ requests: record.requests + 1 })
-      .eq('ip', identifier);
-    return { allowed: true, remaining: RATE_LIMIT - (record.requests + 1) };
-  } else {
-    await supabase.from('rate_limits')
-      .insert({ ip: identifier, requests: 1, window_start: now });
-    return { allowed: true, remaining: RATE_LIMIT - 1 };
-  }
-}
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -52,34 +11,50 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Use userId if provided, else fall back to IP
-  const { userId } = req.body || {};
+  const { text, userId } = req.body || {};
+  if (!text?.trim()) return res.status(400).json({ error: 'No text provided' });
+
   const forwarded = req.headers['x-forwarded-for'];
   const ip = forwarded ? forwarded.split(',')[0].trim() : req.socket.remoteAddress || 'unknown';
   const identifier = userId || ip;
+  const today = new Date().toISOString().split('T')[0];
 
-  const rateCheck = await checkRateLimitPublic(identifier);
+  // Get or create record
+  let { data: record } = await supabase
+    .from('rate_limits')
+    .select('*')
+    .eq('ip', identifier)
+    .maybeSingle();
 
-  if (!rateCheck.allowed) {
-    return res.status(429).json({
-      error: 'Too many requests',
-      retryAfter: rateCheck.retryAfter,
-      checksRemaining: 0,
-      status: 'LIMIT_REACHED'
-    });
+  // Reset if old day or create fresh
+  if (!record) {
+    await supabase.from('rate_limits').insert({ ip: identifier, requests: 0, window_st: today });
+    record = { requests: 0 };
+  } else if (record.window_st !== today) {
+    await supabase.from('rate_limits').update({ requests: 0, window_st: today }).eq('ip', identifier);
+    record = { requests: 0 };
   }
 
+  const used = record.requests ?? 0;
+
+  if (used >= RATE_LIMIT) {
+    return res.status(429).json({ error: 'Daily limit reached', checksRemaining: 0 });
+  }
+
+  // Run analysis
   const response = await fetch('https://scam-detector-backend.vercel.app/api/check', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': process.env.API_KEY
     },
-    body: JSON.stringify(req.body)
+    body: JSON.stringify({ text, userId })
   });
 
   const data = await response.json();
-  data.checksRemaining = rateCheck.remaining;
 
-  res.status(response.status).json(data);
+  // Increment count
+  await supabase.from('rate_limits').update({ requests: used + 1 }).eq('ip', identifier);
+
+  return res.status(200).json({ ...data, checksRemaining: RATE_LIMIT - (used + 1) });
       }
