@@ -12,6 +12,17 @@ export default async function handler(req, res) {
   const identifier = userId || ip;
   const today = new Date().toISOString().split('T')[0];
 
+  if (userId) {
+  const { data: profile } = await supabase
+    .from('profile')
+    .select('plan')
+    .eq('id', userId)
+    .maybeSingle();
+  if (profile?.plan === 'pro') {
+    return res.status(200).json({ checksRemaining: 'unlimited' });
+  }
+  }
+
   const { data: record } = await supabase
     .from('rate_limits')
     .select('*')
