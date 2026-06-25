@@ -324,7 +324,7 @@ export default async function handler(req, res) {
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
   res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -332,7 +332,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const userId = req.method === 'GET'? req.query.userId : req.body?.userId;
+  const userId = req.body?.userid;
 if (!userId) {
   return res.status(400).json({ error: 'userId required' });
 }
@@ -348,7 +348,6 @@ const ip = forwarded? forwarded.split(',')[0].trim() : req.socket.remoteAddress 
     .eq('id', userId)
     .maybeSingle();
     if (profile?.plan === 'pro' || profile?.plan === 'premium') {
-      if (req.method === 'GET') return res.status(200).json({ checksRemaining: 'unlimited' });
       if (req.method === 'POST') {
         const parseResult = RequestSchema.safeParse(req.body);
         if (!parseResult.success) return res.status(400).json({ error: 'Invalid request' });
