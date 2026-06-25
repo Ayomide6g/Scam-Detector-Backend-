@@ -332,7 +332,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const userId = req.body?.userid;
+  const userId = req.body?.userId;
 if (!userId) {
   return res.status(400).json({ error: 'userId required' });
 }
