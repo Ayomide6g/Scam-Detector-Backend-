@@ -336,7 +336,7 @@ export default async function handler(req, res) {
 if (!userId) {
   return res.status(400).json({ error: 'userId required' });
 }
-const identifier = userId;
+const identifier = String(userId);
 const forwarded = req.headers['x-forwarded-for'];
 const ip = forwarded? forwarded.split(',')[0].trim() : req.socket.remoteAddress || 'unknown';
   const today = new Date().toISOString().split('T')[0];
