@@ -360,52 +360,70 @@ const ip = forwarded? forwarded.split(',')[0].trim() : req.socket.remoteAddress 
 if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
 // POST = ONLY HERE do we create/update the database
-let { data: record } = await supabase
+let { data: record, error: selectError } = await supabase
   .from('rate_limits')
   .select('*')
   .eq('ip', identifier)
   .maybeSingle();
 
-if (!record) {
-  const { error } = await supabase.from('rate_limits').insert({ ip: identifier, requests: 0, window_st: today });
-  if (error) return res.status(500).json({ error: 'DB insert failed' });
-  record = { requests: 0, window_st: today };
-} else if (record.window_st !== today) {
-  const { error } = await supabase.from('rate_limits').update({ requests: 0, window_st: today }).eq('ip', identifier);
-  if (error) return res.status(500).json({ error: 'DB reset failed' });
-  record = { requests: 0, window_st: today };
+if (selectError) {
+  console.error('Select error:', selectError);
+  return res.status(500).json({ error: 'DB select failed' });
 }
 
-const used = record.requests ?? 0;
+let requests = 0;
+let window_st = today;
 
-  const parseResult = RequestSchema.safeParse(req.body);
-  if (!parseResult.success) {
-    return res.status(400).json({ error: 'Invalid request', details: parseResult.error.issues });
+if (record) {
+  if (record.window_st === today) {
+    requests = record.requests;
   }
+}
 
-  if (used >= RATE_LIMIT) {
-    return res.status(429).json({ error: 'Daily limit reached', checksRemaining: 0 });
+if (requests >= RATE_LIMIT) {
+  return res.status(429).json({ error: 'Daily limit reached', checksRemaining: 0 });
+}
+
+const parseResult = RequestSchema.safeParse(req.body);
+if (!parseResult.success) {
+  return res.status(400).json({ error: 'Invalid request', details: parseResult.error.issues });
+}
+
+const { text } = parseResult.data;
+const result = analyzeMessage(text);
+
+const { error: upsertError } = await supabase
+  .from('rate_limits')
+  .upsert({ 
+    ip: identifier, 
+    requests: requests + 1, 
+    window_st: window_st 
+  }, { 
+    onConflict: 'ip'
+  });
+
+if (upsertError) {
+  console.error('Upsert error:', upsertError);
+  return res.status(500).json({ error: 'DB upsert failed' });
+}
+
+if (result.score >= 40) {
+  try {
+    await supabase.from('scam_logs').insert({ 
+      ip: ip, 
+      text_preview: text.substring(0, 100), 
+      score: result.score, 
+      status: result.status, 
+      company: result.company_detected, 
+      created_at: new Date().toISOString() 
+    });
+  } catch (e) { 
+    console.error('Supabase log error:', e); 
   }
+}
 
-  const { text } = parseResult.data;
-  const result = analyzeMessage(text);
-
-  const { error: updateError } = await supabase.from('rate_limits').update({ requests: used + 1 }).eq('ip', identifier);
-if (updateError) return res.status(500).json({ error: 'DB update failed' });
-  if (supabase && result.score >= 40) {
-    try {
-      await supabase.from('scam_logs').insert({
-        ip: ip,
-        text_preview: text.substring(0, 100),
-        score: result.score,
-        status: result.status,
-        company: result.company_detected,
-        created_at: new Date().toISOString()
-      });
-    } catch (e) {
-      console.error('Supabase log error:', e);
-    }
-  }
-
-  return res.status(200).json({...result, checksRemaining: RATE_LIMIT - (used + 1) });
+return res.status(200).json({
+  ...result, 
+  checksRemaining: RATE_LIMIT - (requests + 1) 
+});
 }
