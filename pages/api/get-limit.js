@@ -45,7 +45,7 @@ export default async function handler(req, res) {
   // READ ONLY - Free user logic
   const { data: record } = await supabase
    .from('rate_limits')
-   .select('requests, window_st')
+   .select('requests, window_start')
    .eq('ip', String(userId)) // Using userId as the identifier so it follows them everywhere
    .maybeSingle();
 
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
   }
 
   // New day = reset to 3. But we DON'T write to DB here. POST will handle the reset.
-  if (record.window_st!== today) {
+  if (record.window_start!== today) {
     return res.status(200).json({ checksRemaining: RATE_LIMIT, plan: 'free' });
   }
 
