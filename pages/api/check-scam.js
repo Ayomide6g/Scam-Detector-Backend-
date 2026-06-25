@@ -367,10 +367,12 @@ let { data: record } = await supabase
   .maybeSingle();
 
 if (!record) {
-  await supabase.from('rate_limits').insert({ ip: identifier, requests: 0, window_st: today });
+  const { error } = await supabase.from('rate_limits').insert({ ip: identifier, requests: 0, window_st: today });
+  if (error) return res.status(500).json({ error: 'DB insert failed' });
   record = { requests: 0, window_st: today };
 } else if (record.window_st !== today) {
-  await supabase.from('rate_limits').update({ requests: 0, window_st: today }).eq('ip', identifier);
+  const { error } = await supabase.from('rate_limits').update({ requests: 0, window_st: today }).eq('ip', identifier);
+  if (error) return res.status(500).json({ error: 'DB reset failed' });
   record = { requests: 0, window_st: today };
 }
 
@@ -388,8 +390,8 @@ const used = record.requests ?? 0;
   const { text } = parseResult.data;
   const result = analyzeMessage(text);
 
-  await supabase.from('rate_limits').update({ requests: used + 1 }).eq('ip', identifier);
-
+  const { error: updateError } = await supabase.from('rate_limits').update({ requests: used + 1 }).eq('ip', identifier);
+if (updateError) return res.status(500).json({ error: 'DB update failed' });
   if (supabase && result.score >= 40) {
     try {
       await supabase.from('scam_logs').insert({
