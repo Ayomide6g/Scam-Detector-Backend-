@@ -374,10 +374,6 @@ export default async function handler(req, res) {
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const apiKey = req.headers['x-api-key'];
-  if (API_KEY !== 'your-secret-key' && apiKey !== API_KEY) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
 
   const parseResult = RequestSchema.safeParse(req.body);
   if (!parseResult.success) {
