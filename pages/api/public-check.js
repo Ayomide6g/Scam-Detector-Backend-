@@ -19,6 +19,27 @@ export default async function handler(req, res) {
   const identifier = userId || ip;
   const today = new Date().toISOString().split('T')[0];
 
+  // Pro bypass
+if (userId) {
+  const { data: profile } = await supabase
+    .from('profile')
+    .select('plan')
+    .eq('id', userId)
+    .maybeSingle();
+  if (profile?.plan === 'pro') {
+    const response = await fetch('https://scam-detector-backend.vercel.app/api/check', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.API_KEY
+      },
+      body: JSON.stringify({ text, userId })
+    });
+    const data = await response.json();
+    return res.status(200).json({ ...data, checksRemaining: 'unlimited' });
+  }
+}
+
   // Get or create record
   let { data: record } = await supabase
     .from('rate_limits')
