@@ -352,28 +352,46 @@ export default async function handler(req, res) {
     }
   }
 
-  let { data: record } = await supabase
+  // GET = READ ONLY, never creates or resets
+if (req.method === 'GET') {
+  const { data: record } = await supabase
+    .from('rate_limits')
+    .select('requests, window_st')
+    .eq('ip', identifier)
+    .maybeSingle();
+
+  // User doesn't exist yet = 3 checks
+  if (!record) {
+    return res.status(200).json({ checksRemaining: RATE_LIMIT });
+  }
+
+  // New day = reset to 3, but DON'T write to DB on GET
+  if (record.window_st !== today) {
+    return res.status(200).json({ checksRemaining: RATE_LIMIT });
+  }
+
+  const used = record.requests ?? 0;
+  return res.status(200).json({ checksRemaining: Math.max(RATE_LIMIT - used, 0) });
+}
+
+if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+// POST = ONLY HERE do we create/update the database
+let { data: record } = await supabase
   .from('rate_limits')
   .select('*')
   .eq('ip', identifier)
   .maybeSingle();
 
-  if (!record) {
-    await supabase.from('rate_limits').insert({ ip: identifier, requests: 0, window_st: today });
-    record = { requests: 0 };
-  } else if (record.window_st!== today) {
-        await supabase.from('rate_limits').update({ requests: 0, window_st: today }).eq('ip', identifier);
-    record = { requests: 0 };
-  }
+if (!record) {
+  await supabase.from('rate_limits').insert({ ip: identifier, requests: 0, window_st: today });
+  record = { requests: 0, window_st: today };
+} else if (record.window_st !== today) {
+  await supabase.from('rate_limits').update({ requests: 0, window_st: today }).eq('ip', identifier);
+  record = { requests: 0, window_st: today };
+}
 
-  const used = record.requests ?? 0;
-
-  if (req.method === 'GET') {
-    return res.status(200).json({ checksRemaining: Math.max(RATE_LIMIT - used, 0) });
-  }
-
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
+const used = record.requests ?? 0;
 
   const parseResult = RequestSchema.safeParse(req.body);
   if (!parseResult.success) {
