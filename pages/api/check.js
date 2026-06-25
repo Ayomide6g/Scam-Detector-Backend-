@@ -102,8 +102,7 @@ const today = new Date().toISOString().split('T')[0];
 
 return res.status(200).json({ 
   ...result, 
-  checksRemaining: isPremium ? 'unlimited' : Math.max(rateCheck.remaining - 1, 0)
-});
+  checksRemaining: isPremium ? 'unlimited' : null
   } catch (error) {
     console.error('Handler error:', error);
     return res.status(500).json({ error: 'Analysis failed', message: error.message });
