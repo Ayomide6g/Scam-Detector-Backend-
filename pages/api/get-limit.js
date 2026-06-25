@@ -330,11 +330,6 @@ export default async function handler(req, res) {
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
 
-  if (req.method === 'GET') {
-    const { userId } = req.query;
-    const ip = req.headers['x-forwarded-for']?.split(',')[0] || 'unknown';
-    const identifier = userId || ip;
-
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const userId = req.method === 'GET'? req.query.userId : req.body?.userId;
