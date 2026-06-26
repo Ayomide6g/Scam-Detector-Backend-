@@ -362,27 +362,16 @@ let window_start = new Date(today + 'T00:00:00+01:00').toISOString(); // 12:00 A
 if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
 // POST = ONLY HERE do we create/update the database
-let { data: record, error: selectError } = await supabase
- .from('rate_limits')
- .select('*')
- .eq('ip', identifier)
- .maybeSingle();
+const { data: row } = await supabase
+.from('user_limits')
+.select('checks_used, checks_remaining, window_start')
+.eq('user_id', userId)
+.maybeSingle();
 
-if (selectError) {
-  console.error('Select error:', selectError);
-  return res.status(500).json({ error: 'DB select failed' });
-}
-  
-if (record) {
-  const recordDate = new Date(record.window_start).toISOString().split('T')[0];
+const used = row?.window_start === today? (row.checks_used?? 0) : 0;
+const remaining = row?.window_start === today? (row.checks_remaining?? RATE_LIMIT) : RATE_LIMIT;
 
-  if (recordDate === today) {
-    requests = record.requests;
-    window_start = new Date(today + 'T00:00:00+01:00').toISOString(); // keep today's midnight
-  }
-}
-
-if (requests >= RATE_LIMIT) {
+if (remaining <= 0) {
   return res.status(429).json({ error: 'Daily limit reached', checksRemaining: 0 });
 }
 
@@ -395,14 +384,13 @@ const { text } = parseResult.data;
 const result = analyzeMessage(text);
 
 const { error: upsertError } = await supabase
- .from('rate_limits')
- .upsert({
-    ip: identifier,
-    requests: requests + 1,
-    window_start: window_start
-  }, {
-    onConflict: 'ip'
-  });
+.from('user_limits')
+.upsert({
+    user_id: userId,
+    checks_used: used + 1,
+    checks_remaining: remaining - 1,
+    window_start: today
+  }, { onConflict: 'user_id' });
 
 if (upsertError) {
   console.error('Upsert error:', upsertError);
