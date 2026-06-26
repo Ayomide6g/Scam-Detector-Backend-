@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'userId required' });
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' });
 
   // Check if user is Pro/Premium - unlimited forever
   const { data: profile } = await supabase
