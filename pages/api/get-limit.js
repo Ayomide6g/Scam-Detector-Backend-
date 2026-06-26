@@ -42,41 +42,37 @@ export default async function handler(req, res) {
     return res.status(200).json({ checksRemaining: 'unlimited', plan: profile.plan });
   }
 
-  // Free user logic
-  const { data: record } = await supabase
-   .from('rate_limits')
-   .select('requests, window_start')
-   .eq('ip', String(userId)) // Using userId as the identifier so it follows them everywhere
-   .maybeSingle();
+// Free user logic - FIXED to use user_id + checks_remaining
+const { data: row, error } = await supabase
+ .from('user_limits')
+ .select('checks_used, checks_remaining, window_start')
+ .eq('user_id', userId)
+ .maybeSingle();
 
-  // New user or first check ever = create row with 0 used
-  if (!record) {
-    await supabase
-     .from('rate_limits')
-     .insert({ ip: String(userId), requests: 0, window_start: new Date(today + 'T00:00:00+01:00').toISOString() });
+if (error && error.code!== 'PGRST116') {
+  return res.status(500).json({ error: error.message });
+}
 
-    return res.status(200).json({ checksRemaining: RATE_LIMIT, plan: 'free' });
-  }
+// New user OR new day = reset to 3
+if (!row || row.window_start!== today) {
+  const { data: upserted } = await supabase
+   .from('user_limits')
+   .upsert({
+      user_id: userId,
+      checks_used: 0,
+      checks_remaining: RATE_LIMIT,
+      window_start: today
+    }, { onConflict: 'user_id' })
+   .select()
+   .single();
 
-  // New day = reset to 0 in DB, return 3 to user
-  const recordDate = new Date(record.window_start).toISOString().split('T')[0];
-if (recordDate!== today) {
-    await supabase
-     .from('rate_limits')
-     .update({ requests: 0, window_start: new Date(today + 'T00:00:00+01:00').toISOString() })
-     .eq('ip', String(userId));
+  return res.status(200).json({ checksRemaining: upserted.checks_remaining, plan: 'free' });
+}
 
-    return res.status(200).json({ checksRemaining: RATE_LIMIT, plan: 'free' });
-  }
-
-  // Same day - return actual remaining
-  const used = record.requests?? 0;
-  const remaining = Math.max(RATE_LIMIT - used, 0);
-
-  return res.status(200).json({
-    checksRemaining: remaining,
-    plan: 'free',
-    used: used,
-    limit: RATE_LIMIT
-  });
-  }
+// Same day = return actual remaining
+return res.status(200).json({
+  checksRemaining: row.checks_remaining,
+  plan: 'free',
+  used: row.checks_used,
+  limit: RATE_LIMIT
+});
