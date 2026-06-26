@@ -412,8 +412,5 @@ if (result.score >= 40) {
   }
 }
 
-return res.status(200).json({
- ...result,
-  checksRemaining: RATE_LIMIT - (requests + 1)
-});
+return res.status(200).json({ ...result, checksRemaining: remaining - 1 });
 }
