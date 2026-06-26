@@ -76,3 +76,4 @@ return res.status(200).json({
   used: row.checks_used,
   limit: RATE_LIMIT
 });
+}
