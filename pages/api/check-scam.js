@@ -371,11 +371,11 @@ if (selectError) {
   return res.status(500).json({ error: 'DB select failed' });
 }
 
+const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' });
 let requests = 0;
-let window_start = new Date().toISOString(); // timestamptz needs full ISO
-
+let window_start = today;
+  
 if (record) {
-  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
   const recordDate = new Date(record.window_start).toISOString().split('T')[0];
 
   if (recordDate === today) {
