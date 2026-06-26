@@ -53,7 +53,7 @@ export default async function handler(req, res) {
   if (!record) {
     await supabase
      .from('rate_limits')
-     .insert({ ip: String(userId), requests: 0, window_start: today });
+     .insert({ ip: String(userId), requests: 0, window_start: new Date(today + 'T00:00:00+01:00').toISOString() });
 
     return res.status(200).json({ checksRemaining: RATE_LIMIT, plan: 'free' });
   }
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
   if (record.window_start!== today) {
     await supabase
      .from('rate_limits')
-     .update({ requests: 0, window_start: today })
+     .update({ requests: 0, window_start: new Date(today + 'T00:00:00+01:00').toISOString() })
      .eq('ip', String(userId));
 
     return res.status(200).json({ checksRemaining: RATE_LIMIT, plan: 'free' });
