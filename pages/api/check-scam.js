@@ -339,7 +339,7 @@ if (!userId) {
 const identifier = String(userId);
 const forwarded = req.headers['x-forwarded-for'];
 const ip = forwarded? forwarded.split(',')[0].trim() : req.socket.remoteAddress || 'unknown';
-  const today = new Date().toISOString().split('T')[0];
+  
 
   if (userId) {
     const { data: profile } = await supabase
