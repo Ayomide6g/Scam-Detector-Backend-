@@ -59,7 +59,8 @@ export default async function handler(req, res) {
   }
 
   // New day = reset to 0 in DB, return 3 to user
-  if (record.window_start!== today) {
+  const recordDate = new Date(record.window_start).toISOString().split('T')[0];
+if (recordDate!== today) {
     await supabase
      .from('rate_limits')
      .update({ requests: 0, window_start: new Date(today + 'T00:00:00+01:00').toISOString() })
