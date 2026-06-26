@@ -391,7 +391,6 @@ const { error: upsertError } = await supabase
     checks_remaining: remaining - 1,
     window_start: today
   }, { onConflict: 'user_id' });
-}
 
 if (upsertError) {
   console.error('Upsert error:', upsertError);
