@@ -339,7 +339,9 @@ if (!userId) {
 const identifier = String(userId);
 const forwarded = req.headers['x-forwarded-for'];
 const ip = forwarded? forwarded.split(',')[0].trim() : req.socket.remoteAddress || 'unknown';
-  
+const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' }); // "2026-06-26"
+let requests = 0;
+let window_start = new Date(today + 'T00:00:00+01:00').toISOString(); // 12:00 AM Lagos in UTC  
 
   if (userId) {
     const { data: profile } = await supabase
@@ -370,17 +372,13 @@ if (selectError) {
   console.error('Select error:', selectError);
   return res.status(500).json({ error: 'DB select failed' });
 }
-
-const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' });
-let requests = 0;
-let window_start = today;
   
 if (record) {
   const recordDate = new Date(record.window_start).toISOString().split('T')[0];
 
   if (recordDate === today) {
     requests = record.requests;
-    window_start = record.window_start; // keep existing timestamp
+    window_start = new Date(today + 'T00:00:00+01:00').toISOString(); // keep today's midnight
   }
 }
 
