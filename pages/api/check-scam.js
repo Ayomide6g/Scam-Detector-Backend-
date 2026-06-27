@@ -336,12 +336,8 @@ message = 'No significant scam indicators were detected, but this is not a guara
   'This is not a guarantee of safety. Scammers can misuse legitimate websites and trusted services.'
 ];
     }
-  } else {
-    status = 'NO_CONTEXT';
-    message = 'We need more information to properly assess this message.';
-    reasons = ['No scannable content detected'];
-  }
-
+  } 
+  
   score = Math.min(Math.max(score, 0), 100);
   if (status === 'NO_CONTEXT') score = Math.min(score, 30);
   return { status, score, message, company_detected: detectedCompany?.name || null, reasons: reasons.length? reasons : ['No issues detected'] };
