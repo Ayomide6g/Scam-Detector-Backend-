@@ -211,7 +211,7 @@ const isFakingWhitelisted =!isWhitelisted && cleanDomain && whitelist.some(safe 
 
   const isolationPhrases = [ "don't tell anyone", "keep this secret", "between us", "delete this message", "tell no one", "just between you and me", "don't inform anyone" ];
   const legitSecretContext = ['secret key', 'api key', 'private key generated', 'your key is', 'access key'];
-  const isLegitSecretContext = legitSecretContext.some(phrase => lowerText.includes(phrase));
+  const isLegitSecretContext = legitSecretContext.some(phrase => hasWord(lowerText, phrase));
   isolationPhrases.forEach(phrase => {
     if (lowerText.includes(phrase)) {
       if (isLegitSecretContext) {
