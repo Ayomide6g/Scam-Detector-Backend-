@@ -89,8 +89,10 @@ function analyzeMessage(text) {
         reasons.push(`IP address used instead of domain`);
       }
       const parsedDomain = parsed?.domain && parsed?.publicSuffix? `${parsed.domain}.${parsed.publicSuffix}` : null;
-      const isWhitelisted = parsedDomain && whitelist.some(safe => parsedDomain === safe);
-      const isFakingWhitelisted =!isWhitelisted && whitelist.some(safe => cleanUrl.includes(safe));
+      const normalize = (d) => d?.replace(/^www\./, '').toLowerCase();
+const cleanDomain = normalize(cleanUrl);
+const isWhitelisted = cleanDomain && whitelist.some(safe => safe === cleanDomain);
+const isFakingWhitelisted =!isWhitelisted && cleanDomain && whitelist.some(safe => cleanDomain.includes(safe) && cleanDomain!== safe);
       if (isWhitelisted) {
         score -= 20;
         reasons.push(`Link goes to trusted domain: ${cleanUrl}`);
