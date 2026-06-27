@@ -160,7 +160,7 @@ const isFakingWhitelisted =!isWhitelisted && cleanDomain && whitelist.some(safe 
   if (detectedCompany) {
     for (const rule of detectedCompany.never_asks_for) {
       if (hasWord(lowerText, rule) && hasRequestWord) {
-        score += 35;
+        score += 55;
         reasons.push(`${detectedCompany.name} never asks for "${rule}" via messages — This is a scam tactic.`);
       }
     }
