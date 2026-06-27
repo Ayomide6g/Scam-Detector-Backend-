@@ -324,7 +324,7 @@ const isFakingWhitelisted =!isWhitelisted && cleanDomain && whitelist.some(safe 
     if (detectedCompany) {
       message = `This appears related to ${detectedCompany.name} but be careful. ${detectedCompany.name} only uses ${detectedCompany.official_channels} for sensitive requests.`;
     } else {
-      message = 'This appears to be safe but I have to be careful. Never share passwords, PINs, or ID documents via links or messages.';
+      message = 'This appears to be safe but you have to be careful. Never share passwords, PINs, or ID documents via links or messages.';
     }
   } else if (urls.length > 0 || hasKeywords) {
     status = 'SAFE';
