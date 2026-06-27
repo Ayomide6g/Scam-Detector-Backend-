@@ -310,22 +310,21 @@ const isFakingWhitelisted =!isWhitelisted && cleanDomain && whitelist.some(safe 
 
   let message = '';
   if (score === 0 && urls.length === 0 &&!hasKeywords) {
-    status = 'NO_CONTEXT';
-    message = 'We need more information to properly assess this message.';
-    reasons = ['No links or keywords detected', 'Message contains only casual text', 'Too short to analyze patterns'];
-  } else if (score >= 70) {
-    status = 'HIGH_RISK';
-    message = 'This message shows strong signs of fraud. Do not engage.';
-  } else if (score >= 30) {
-    status = 'SUSPICIOUS';
-    message = 'This message contains suspicious patterns. Be careful.';
-  } else if (score >= 15) {
-    status = 'CAUTION';
-    if (detectedCompany) {
-      message = `This appears related to ${detectedCompany.name} but be careful. ${detectedCompany.name} only uses ${detectedCompany.official_channels} for sensitive requests.`;
-    } else {
-      message = 'This appears to be safe but you have to be cautious. Never share passwords, PINs, or ID documents via links or messages.';
-    }
+    status = 'NO_CONTEXT'; 
+message = 'More information is required to accurately assess this content. Please provide additional text, a link, or relevant details. Reasons: Insufficient information for analysis. No suspicious links or identifiable patterns detected. Additional context is needed for a reliable assessment.'; 
+reasons = ['No links or keywords detected', 'Message contains only casual text', 'Too short to analyze patterns']; 
+} else if (score >= 70) { 
+status = 'HIGH_RISK'; 
+message = 'Strong indicators of fraud were detected. Avoid responding, sharing personal information, or making any payments.'; 
+} else if (score >= 30) { 
+status = 'SUSPICIOUS'; 
+message = 'This content contains suspicious indicators. Verify its authenticity through official channels before taking any action.'; 
+} else if (score >= 15) { 
+status = 'CAUTION'; 
+if (detectedCompany) { 
+message = `This content appears to reference ${detectedCompany.name}. Always verify sensitive requests through the company's official communication channels before responding.`; 
+} else { 
+message = 'No significant scam indicators were detected, but this is not a guarantee of safety. Stay cautious and never share passwords, PINs, one-time codes (OTPs), or sensitive personal information through messages or unfamiliar links.'; }
   } else if (urls.length > 0 || hasKeywords) {
     status = 'SAFE';
     message = 'This content appears to be safe based on our analysis. However, always stay cautious—scammers can misuse legitimate websites, trusted platforms, or genuine services to deceive people. Never share passwords, OTPs, banking details, or personal information unless you are certain the request is authentic.';
