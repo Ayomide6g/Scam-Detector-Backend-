@@ -46,7 +46,33 @@ function analyzeMessage(text) {
   const urls = rawText.match(urlRegex) || [];
   const shorteners = ['bit.ly', 'tinyurl', 't.co', 'goo.gl', 'ow.ly', 'is.gd', 'rb.gy', 'shorturl.at', 'cutt.ly', 'tiny.cc', 't.me', 'wa.me'];
   const sketchyTlds = ['.tk', '.ml', '.ga', '.cf', '.gq', '.xyz', '.top', '.work', '.click', '.link', '.online', '.site', '.icu'];
-  const whitelist = [ 'google.com', 'youtube.com', 'apple.com', 'paypal.com', 'binance.com', 'coinbase.com', 'instagram.com', 'mtn.ng', 'mtnonline.com', 'gtbank.com', 'zenithbank.com', 'firstbanknigeria.com', 'ubagroup.com', 'accessbankplc.com', 'kuda.com', 'opay.com', 'opayweb.com', 'flutterwave.com', 'cowrywise.com', 'piggyvest.com', 'momobank.ng', 'airtel.com.ng', 'carbon.ng', 'palmpay.com' ];
+  const whitelist = [
+  'facebook.com', 'messenger.com', 'instagram.com', 'threads.net', 'whatsapp.com', 
+  'x.com', 'twitter.com', 'tiktok.com', 'linkedin.com', 'snapchat.com', 'telegram.org', 
+  'discord.com', 'reddit.com', 'youtube.com', 'pinterest.com', 'tumblr.com', 'quora.com',
+  'google.com', 'gmail.com', 'googleusercontent.com', 'googleapis.com', 'gstatic.com',
+  'microsoft.com', 'live.com', 'outlook.com', 'office.com', 'office365.com', 'onedrive.live.com', 'azure.com',
+  'apple.com', 'icloud.com',
+  'openai.com', 'chatgpt.com', 'anthropic.com', 'claude.ai', 'perplexity.ai', 'gemini.google.com',
+  'amazon.com', 'aws.amazon.com',
+  'paypal.com', 'stripe.com', 'wise.com', 'payoneer.com',
+  'gtbank.com', 'gtbank.com.ng', 'accessbankplc.com', 'zenithbank.com', 'firstbanknigeria.com', 
+  'ubagroup.com', 'unionbankng.com', 'sterling.ng', 'wema.bank', 'fidelitybank.ng', 'ecobank.com', 
+  'fcmb.com', 'polarisbanklimited.com', 'providusbank.com', 'tajbank.com', 'keystonebankng.com',
+  'opayweb.com', 'palmpay.com', 'moniepoint.com', 'kuda.com', 'paystack.com', 'flutterwave.com', 
+  'piggyvest.com', 'cowrywise.com', 'carbon.ng', 'vbank.ng', 'eyowo.com', 'quidax.com',
+  'mtn.ng', 'mtnonline.com', 'airtel.com.ng', '9mobile.com.ng', 'globacom.com',
+  'binance.com', 'coinbase.com', 'kraken.com', 'okx.com', 'bybit.com', 'kucoin.com', 'crypto.com',
+  'ebay.com', 'aliexpress.com', 'jumia.com.ng', 'konga.com', 'temu.com', 'shein.com',
+  'github.com', 'gitlab.com', 'vercel.com', 'netlify.com', 'cloudflare.com', 'digitalocean.com', 
+  'oracle.com', 'ibm.com', 'intel.com', 'amd.com', 'nvidia.com',
+  'netflix.com', 'spotify.com', 'primevideo.com', 'disneyplus.com',
+  'canva.com', 'notion.so', 'dropbox.com', 'zoom.us', 'slack.com', 'figma.com',
+  'indeed.com', 'glassdoor.com', 'jobberman.com',
+  'firs.gov.ng', 'nimc.gov.ng', 'jamb.gov.ng', 'nysc.gov.ng', 'nigeria.gov.ng', 'cbn.gov.ng', 
+  'ncc.gov.ng', 'frsc.gov.ng',
+  'booking.com', 'airbnb.com', 'expedia.com'
+];
 
   let score = 0;
   let reasons = [];
