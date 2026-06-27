@@ -324,13 +324,18 @@ const isFakingWhitelisted =!isWhitelisted && cleanDomain && whitelist.some(safe 
     if (detectedCompany) {
       message = `This appears related to ${detectedCompany.name} but be careful. ${detectedCompany.name} only uses ${detectedCompany.official_channels} for sensitive requests.`;
     } else {
-      message = 'This appears to be safe but you have to be careful. Never share passwords, PINs, or ID documents via links or messages.';
+      message = 'This appears to be safe but you have to be cautious. Never share passwords, PINs, or ID documents via links or messages.';
     }
   } else if (urls.length > 0 || hasKeywords) {
     status = 'SAFE';
-    message = 'This content appears to be safe. No significant scam indicators were detected.';
+    message = 'This content appears to be safe based on our analysis. However, always stay cautious—scammers can misuse legitimate websites, trusted platforms, or genuine services to deceive people. Never share passwords, OTPs, banking details, or personal information unless you are certain the request is authentic.';
     if (reasons.length === 0) {
-      reasons = ['No suspicious keywords detected', 'No malicious links or redirects found', 'Sender reputation looks good'];
+    reasons = [
+  'No suspicious keywords or scam patterns were detected.',
+  'No known malicious or phishing links were found.',
+  'No obvious signs of impersonation or fraud were identified.',
+  'This is not a guarantee of safety. Scammers can misuse legitimate websites and trusted services.'
+];
     }
   } else {
     status = 'NO_CONTEXT';
