@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 const RATE_LIMIT = 3;
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '*';
-const API_KEY = process.env.API_KEY || 'your-secret-key';
+const API_KEY = process.env.API_KEY || 'my-secret-key';
 
 const RequestSchema = z.object({
   text: z.string().min(1).max(5000),
